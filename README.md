@@ -73,3 +73,21 @@ Ya está preparado: cada persona necesita un usuario en Supabase y una fila en `
 ## Mantenimiento
 
 - El plan gratis de Supabase **pausa el proyecto** si pasa varios días sin uso. Si la app dice "Guardado en el teléfono" en vez de "Guardado", entra a supabase.com y reactívalo.
+
+## Respaldos del cerco (solo datos)
+
+Guardan el cerco de la nube (alambres, switches, puertas, notas) y las correcciones del mapa. No guardan la app.
+Quedan en `respaldos/`, solo en esta PC (no se suben a GitHub).
+
+```powershell
+python herramientas/respaldo.py guardar nombre-del-respaldo
+```
+```powershell
+python herramientas/respaldo.py listar
+```
+```powershell
+python herramientas/respaldo.py restaurar 2026-11-21_1916_cerco-bueno-antes-de-pruebas.json
+```
+
+`restaurar` sube solo el cerco; con `--todo` deja la nube exactamente como en el respaldo (borra correcciones nuevas).
+Antes de restaurar guarda solo un respaldo `antes-de-restaurar`, así se puede deshacer.

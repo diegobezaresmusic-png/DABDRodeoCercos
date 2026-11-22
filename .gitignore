@@ -6,3 +6,6 @@ supabase/.temp/
 .claude/settings.local.json
 Thumbs.db
 desktop.ini
+
+# Respaldos de los datos del cerco (solo en esta PC)
+respaldos/
