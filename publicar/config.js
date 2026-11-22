@@ -1,1 +1,1 @@
-window.CERCO_NUBE = {};
+window.CERCO_NUBE = {"url": "https://iemztqdgygxscwkmwipg.supabase.co", "clave": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImllbXp0cWRneWd4c2N3a213aXBnIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUyMjM5NzgsImV4cCI6MjExMDc5OTk3OH0.Jz4-IG66RIxqhuJ0R3WsGAB-9hQSSNwGx3Gk7cJ2Jmo"};

@@ -16,6 +16,8 @@ Mapa y editor del cerco eléctrico. Se publica como **PWA**: una página web que
 | `publicar/` | **Lo que sube Cloudflare.** Se genera; no editar a mano. |
 | `supabase/migrations/` | Tablas y permisos de la base. |
 | `supabase/alta-dueno.sql` | Te da de alta como dueño del proyecto (una vez). |
+| `herramientas/sb.py` | Administra el Supabase de este proyecto con el token de `.env` (SQL, configuración, avisos de seguridad). |
+| `.env` | Token de Supabase y contraseña de la base. **No se sube a GitHub.** |
 
 ## Publicar un cambio
 
