@@ -286,12 +286,12 @@ def splash_ios(dest, logo):
             d = ImageDraw.Draw(im)
             f = letra(round(24 * k))
             d.text((cx - d.textlength(NOMBRE, font=f) / 2, cy + L / 2 + round(14 * k)), NOMBRE, font=f, fill='#EEF2EC')
-        im.save(dest / f'{w}x{h}@{k}-{orient[0]}.png', optimize=True)
+        im.save(dest / f'{w}x{h}x{k}-{orient[0]}.png', optimize=True)
 
 
 def enlaces_ios():
     return '\n'.join(f'<link rel="apple-touch-startup-image" media="screen and (device-width: {w}px) and (device-height: {h}px) and '
-                     f'(-webkit-device-pixel-ratio: {k}) and (orientation: {o})" href="/iconos/arranque/{w}x{h}@{k}-{o[0]}.png">'
+                     f'(-webkit-device-pixel-ratio: {k}) and (orientation: {o})" href="/iconos/arranque/{w}x{h}x{k}-{o[0]}.png">'
                      for w, h, k, o in pantallas_ios())
 
 
