@@ -2,7 +2,7 @@
 
 Mapa y editor del cerco eléctrico. Se publica como **PWA**: una página web que se instala en Android, iPhone y tabletas sin tiendas, sin Xcode y sin costo.
 
-- **Hosting:** Cloudflare Pages (gratis), en la dirección `…pages.dev`.
+- **Hosting:** Cloudflare Workers con archivos estáticos (gratis): **https://dabdrodeocercos.diegobezaresmusic.workers.dev**
 - **Datos compartidos:** Supabase (gratis). Si no está configurado o no hay sesión, todo se guarda en el dispositivo, igual que antes.
 
 ## Estructura
@@ -25,7 +25,7 @@ Mapa y editor del cerco eléctrico. Se publica como **PWA**: una página web que
 python herramientas/publicar.py
 ```
 
-Luego haz commit y push. Cloudflare publica solo en uno o dos minutos.
+Luego haz commit y push. Cloudflare publica solo en uno o dos minutos. `wrangler.jsonc` le indica que publique la carpeta `publicar/`.
 
 ## Configuración inicial (una sola vez)
 
