@@ -1,0 +1,1740 @@
+<title>Editor del Cerco</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Layout: una sola pantalla — barra arriba, mapa al centro con una mira fija, y abajo un panel de pasos con botones grandes (zona del pulgar) */
+:root{
+  --bg:#EEF2EE; --panel:#FFFFFF; --panel2:#E6ECE6; --rule:#CBD5CC; --fg:#15201A; --muted:#55645A;
+  --accent:#F2B705; --accent-fg:#1D1600; --red:#D3261B; --gate:#1F6FD1; --note:#7442D8; --ok:#1B8A3A; --warn:#B26A00;
+  --shadow:0 -6px 24px rgba(10,20,14,.18);
+  --f-ui:system-ui,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;
+  --f-num:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F1311; --panel:#1A201C; --panel2:#252D28; --rule:#35403A; --fg:#EEF2EC; --muted:#A3AFA6;
+  --accent:#FFC93C; --accent-fg:#1B1503; --red:#FF6B5E; --gate:#5AAEFF; --note:#B997FF; --ok:#7BD88F; --warn:#FFB84D;
+  --shadow:0 -6px 24px rgba(0,0,0,.5); color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F1311; --panel:#1A201C; --panel2:#252D28; --rule:#35403A; --fg:#EEF2EC; --muted:#A3AFA6;
+  --accent:#FFC93C; --accent-fg:#1B1503; --red:#FF6B5E; --gate:#5AAEFF; --note:#B997FF; --ok:#7BD88F; --warn:#FFB84D;
+  --shadow:0 -6px 24px rgba(0,0,0,.5); color-scheme:dark}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font:16px/1.4 var(--f-ui);display:flex;flex-direction:column;overflow:hidden;-webkit-tap-highlight-color:transparent}
+button{font:inherit;color:inherit}
+button:focus-visible,input:focus-visible,textarea:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+.top{display:flex;align-items:center;gap:8px;padding-block:8px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--rule)}
+.top h1{font-size:17px;margin:0;font-weight:750;white-space:nowrap;line-height:1.2}
+.ttl{display:grid;min-width:0}
+.save{display:inline-flex;align-items:center;gap:5px;font-size:12.5px;font-weight:650;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+.save.ok{color:var(--ok)} .save.warn{color:var(--warn)}
+.sp{flex:1}
+.tb{height:42px;border:1px solid var(--rule);border-radius:12px;background:var(--panel2);display:inline-flex;align-items:center;gap:6px;padding:0 12px;cursor:pointer;font-weight:650;font-size:14.5px;flex:none}
+.tb:disabled{opacity:.4;cursor:default}
+.tb svg{width:20px;height:20px;flex:none}
+.tb.icon{width:42px;padding:0;justify-content:center}
+.stats{display:flex;gap:16px;overflow-x:auto;padding-block:6px;padding-left:max(12px,env(safe-area-inset-left,0px));padding-right:max(12px,env(safe-area-inset-right,0px));background:var(--panel);border-bottom:1px solid var(--rule);font:650 13px var(--f-num);font-variant-numeric:tabular-nums;white-space:nowrap;scrollbar-width:none}
+.stats::-webkit-scrollbar{display:none}
+.stats i{display:inline-block;width:10px;height:10px;border-radius:50%;margin-right:6px;vertical-align:-1px;box-shadow:0 0 0 1px rgba(0,0,0,.35)}
+.stats .dead{color:var(--muted)}
+.mapwrap{position:relative;flex:1;min-height:120px;overflow:hidden;background:#0a0d0b}
+#map{position:absolute;inset:0;width:100%;height:100%;touch-action:none;user-select:none;-webkit-user-select:none;display:block}
+.aim{position:absolute;left:50%;top:50%;width:64px;height:64px;margin:-32px 0 0 -32px;pointer-events:none}
+.aim svg{width:100%;height:100%;overflow:visible}
+.tools2{position:absolute;left:max(10px,env(safe-area-inset-left,0px));top:10px;display:grid;gap:8px;z-index:6}
+.zb{position:relative}
+.zb.add{background:var(--accent);color:var(--accent-fg);border-color:rgba(0,0,0,.35)}
+.zb.add svg{width:26px;height:26px}
+.zb[aria-expanded="true"]{outline:3px solid var(--accent);outline-offset:2px}
+.zb .dot{position:absolute;top:5px;right:5px;width:11px;height:11px;border-radius:50%;background:#FFC93C;border:2px solid #15201A}
+.zb .badge{position:absolute;top:-7px;right:-7px;min-width:22px;height:22px;box-sizing:border-box;padding:0 6px;border-radius:99px;background:#7442D8;color:#fff;font:750 12.5px var(--f-ui);display:grid;place-items:center;border:2px solid #fff}
+.zb .badge:empty{display:none}
+@media (hover:hover){.zb[data-tip]:hover::after{content:attr(data-tip);position:absolute;left:calc(100% + 10px);top:50%;transform:translateY(-50%);background:#15201A;color:#fff;padding:7px 11px;border-radius:9px;font:600 14px var(--f-ui);white-space:nowrap;pointer-events:none;box-shadow:0 4px 12px rgba(0,0,0,.3);z-index:30}
+  .zoom .zb[data-tip]:hover::after{left:auto;right:calc(100% + 10px)}}
+.pop{position:absolute;left:calc(max(10px,env(safe-area-inset-left,0px)) + 58px);top:10px;width:min(400px,calc(100% - 136px));max-height:calc(100% - 20px);overflow:auto;box-sizing:border-box;background:var(--panel);color:var(--fg);border:1px solid var(--rule);border-radius:16px;padding:14px;display:grid;gap:12px;box-shadow:0 10px 30px rgba(0,0,0,.4);z-index:20}
+.pop .ph{display:flex;align-items:center;gap:10px}
+.pop .ph h2{margin:0;flex:1;font-size:18px;line-height:1.25}
+.pop .ph .x{width:40px;height:40px;border-radius:10px;border:0;background:var(--panel2);display:grid;place-items:center;cursor:pointer;flex:none}
+.pop .ph .x svg{width:18px;height:18px}
+.pop p{margin:0;color:var(--muted);font-size:14.5px}
+.pop{width:min(300px,calc(100% - 136px));padding:11px;gap:9px;border-radius:13px}
+.pop .ph h2{font-size:14.5px}
+.pop .ph .x{width:32px;height:32px;border-radius:8px}
+.pop .ph .x svg{width:15px;height:15px}
+.pop p{font-size:12.5px}
+.pop .grid6{gap:7px}
+.pop .card{min-height:72px;padding:9px;border-radius:12px;gap:4px}
+.pop .card svg{width:22px;height:22px}
+.pop .card b{font-size:13px}
+.pop .card small{font-size:11px}
+.pop .chips{gap:6px}
+.pop .chip{font-size:12px;padding:5px 10px 5px 7px;gap:5px;border-width:1.5px}
+.pop .chip svg{width:15px;height:15px}
+.pop .b.sm{min-height:34px;font-size:12.5px;padding:4px 11px;border-radius:10px}
+@media (max-width:520px){.pop{left:max(8px,env(safe-area-inset-left,0px));right:max(8px,env(safe-area-inset-right,0px));width:auto;top:66px;max-height:calc(100% - 76px)}}
+.zoom{position:absolute;right:max(10px,env(safe-area-inset-right,0px));top:10px;display:grid;gap:8px}
+.zb{width:46px;height:46px;border-radius:14px;border:1px solid rgba(0,0,0,.25);background:rgba(255,255,255,.94);color:#15201A;display:grid;place-items:center;cursor:pointer;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.zb svg{width:22px;height:22px}
+.zlvl{position:absolute;left:max(10px,env(safe-area-inset-left,0px));bottom:10px;display:flex;align-items:center;gap:10px;background:rgba(15,19,17,.82);color:#fff;border-radius:10px;padding:6px 10px;font:650 13px var(--f-num);font-variant-numeric:tabular-nums;pointer-events:none}
+.zlvl .bar{display:flex;align-items:center;gap:6px}
+.zlvl .bar i{display:block;height:6px;border:2px solid #fff;border-top:0}
+.snack{position:absolute;left:max(10px,env(safe-area-inset-left,0px));right:max(10px,env(safe-area-inset-right,0px));bottom:10px;display:flex;align-items:center;gap:10px;background:#15201A;color:#fff;border-radius:14px;padding:10px 10px 10px 14px;font-weight:600;font-size:15px;box-shadow:0 6px 20px rgba(0,0,0,.35)}
+.snack p{margin:0;flex:1;min-width:0}
+.snack button{border:0;background:none;color:#FFD54A;font-weight:750;padding:8px 10px;border-radius:9px;cursor:pointer;white-space:nowrap}
+/* panel de abajo */
+.dock{background:var(--panel);border-top:1px solid var(--rule);box-shadow:var(--shadow);padding-top:12px;padding-bottom:max(12px,env(safe-area-inset-bottom,0px));padding-left:max(14px,env(safe-area-inset-left,0px));padding-right:max(14px,env(safe-area-inset-right,0px));display:grid;gap:10px;max-height:56vh;overflow:auto;position:relative;z-index:2}
+.dock h2{margin:0;font-size:19px;line-height:1.25;font-weight:750;text-wrap:balance}
+.dock .step{font:750 12px var(--f-ui);letter-spacing:.08em;text-transform:uppercase;color:var(--muted)}
+.dock p{margin:0}
+.dock .lead{font-size:15.5px;color:var(--muted)}
+.dhead{display:flex;align-items:flex-start;gap:12px}
+.dhead .ico{width:44px;height:44px;border-radius:12px;background:var(--panel2);display:grid;place-items:center;flex:none}
+.dhead .ico svg{width:26px;height:26px}
+.dhead .tt{flex:1;min-width:0;display:grid;gap:2px}
+.dhead .x{width:44px;height:44px;border-radius:12px;border:0;background:var(--panel2);display:grid;place-items:center;cursor:pointer;flex:none}
+.dhead .x svg{width:20px;height:20px}
+.dhead .del{height:44px;border-radius:12px;border:1px solid color-mix(in srgb,var(--red) 45%,transparent);background:color-mix(in srgb,var(--red) 12%,transparent);color:var(--red);display:flex;align-items:center;gap:6px;padding:0 12px;font:700 15px var(--f-ui);cursor:pointer;flex:none}
+.dhead .del svg{width:19px;height:19px}
+.dhead .del:hover{background:color-mix(in srgb,var(--red) 22%,transparent)}
+.fb{display:flex;align-items:center;gap:10px;border-radius:12px;padding:10px 12px;font-weight:650;font-size:15px;background:var(--panel2)}
+.fb::before{content:"";width:12px;height:12px;border-radius:50%;flex:none;background:var(--muted)}
+.fb.ok{color:var(--ok)} .fb.ok::before{background:var(--ok)}
+.fb.warn{color:var(--warn)} .fb.warn::before{background:var(--warn)}
+.fb.bad{color:var(--red)} .fb.bad::before{background:var(--red)}
+.btns{display:flex;gap:10px;flex-wrap:wrap}
+.btns>*{flex:1 1 0;min-width:120px}
+.b{min-height:52px;border-radius:14px;border:1px solid var(--rule);background:var(--panel2);font-weight:700;font-size:16px;padding:10px 14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-align:center}
+.b svg{width:22px;height:22px;flex:none}
+.b.pri{background:var(--accent);border-color:var(--accent);color:var(--accent-fg)}
+.b.red{background:var(--red);border-color:var(--red);color:#fff}
+.b.go{background:var(--ok);border-color:var(--ok);color:#fff}
+.b.ghost{background:none}
+.b:disabled{opacity:.4;cursor:default}
+.b.huge{min-height:60px;font-size:17px}
+.dock{grid-auto-rows:max-content;overscroll-behavior:contain}   /* cada bloque mide lo que necesita; si no cabe, el panel hace scroll */
+.list{display:grid;border:1px solid var(--rule);border-radius:14px;overflow:hidden;flex:none}
+.li{display:flex;align-items:center;gap:12px;min-height:54px;padding:6px 14px;border:0;border-top:1px solid var(--rule);background:var(--panel);text-align:left;cursor:pointer;font-size:16px;font-weight:600}
+.li:first-child{border-top:0}
+.li svg{width:22px;height:22px;flex:none;color:var(--muted)}
+.li span{flex:1;min-width:0}
+.li small{display:block;font-weight:500;color:var(--muted);font-size:13.5px}
+.li.danger{color:var(--red)} .li.danger svg{color:var(--red)}
+.pill{display:inline-flex;align-items:center;gap:6px;border-radius:99px;padding:5px 12px;font-weight:750;font-size:14px;width:max-content;max-width:100%}
+.pill.on{background:color-mix(in srgb,var(--ok) 18%,transparent);color:var(--ok)}
+.pill.off{background:color-mix(in srgb,var(--red) 16%,transparent);color:var(--red)}
+.grid6{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.card{border:1px solid var(--rule);background:var(--panel2);border-radius:16px;padding:12px;display:grid;gap:6px;justify-items:start;text-align:left;cursor:pointer;min-height:96px;align-content:start}
+.card svg{width:30px;height:30px}
+.card b{font-size:16px}
+.card small{color:var(--muted);font-size:13.5px;line-height:1.3}
+.dock input[type=text],.dock textarea{width:100%;box-sizing:border-box;background:var(--bg);color:var(--fg);border:1px solid var(--rule);border-radius:12px;padding:12px;font:inherit;font-size:16px}
+.dock textarea{min-height:84px;resize:vertical}
+.q{background:var(--panel2);border-radius:14px;padding:12px 14px;font-size:16px}
+.ans{font-size:14.5px;color:var(--ok);font-weight:650}
+.nav{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.nav .b{flex:0 1 auto;min-width:0}
+/* menú y ventanas */
+.menu{position:absolute;right:max(8px,env(safe-area-inset-right,0px));top:8px;width:min(320px,calc(100% - 16px));background:var(--panel);border:1px solid var(--rule);border-radius:16px;padding:6px;display:grid;box-shadow:0 10px 30px rgba(0,0,0,.35);z-index:20}
+.menu button{border:0;background:none;text-align:left;padding:13px 12px;border-radius:10px;cursor:pointer;font-size:16px;display:flex;gap:12px;align-items:center}
+.menu button svg{width:20px;height:20px;color:var(--muted);flex:none}
+.menu button:hover{background:var(--panel2)}
+.menu .danger{color:var(--red)}
+.menu textarea{margin:6px;min-height:90px;background:var(--bg);color:var(--fg);border:1px solid var(--rule);border-radius:10px;font:12px var(--f-num);padding:8px}
+.modal{position:fixed;inset:0;background:rgba(5,10,7,.55);display:grid;place-items:end center;z-index:30;padding-left:max(10px,env(safe-area-inset-left,0px));padding-right:max(10px,env(safe-area-inset-right,0px));padding-bottom:max(10px,env(safe-area-inset-bottom,0px))}
+@media (min-width:700px){.modal{place-items:center}}
+.mcard{background:var(--panel);border-radius:20px;padding:20px;width:min(460px,100%);max-height:86vh;overflow:auto;display:grid;gap:14px;box-sizing:border-box}
+.mcard h2{margin:0;font-size:21px;text-wrap:balance}
+.mcard p{margin:0;font-size:16px;color:var(--muted)}
+.dots{display:flex;gap:6px;justify-content:center}
+.dots i{width:8px;height:8px;border-radius:50%;background:var(--rule)}
+.dots i.on{background:var(--accent);width:22px;border-radius:99px}
+.legend{display:grid;gap:10px;margin:0;padding:0;list-style:none}
+.legend li{display:flex;gap:12px;align-items:center;font-size:15.5px}
+.legend svg{width:44px;height:26px;flex:none;background:#3a4a3f;border-radius:6px}
+.illus{background:#2f3f33;border-radius:14px;height:120px;display:grid;place-items:center}
+.illus svg{width:100%;height:100%}
+/* computadora: panel a la derecha, letras más grandes */
+@media (min-width:900px){
+  body{display:grid;grid-template-columns:minmax(0,1fr) 430px;grid-template-rows:auto auto minmax(0,1fr);font-size:17px}
+  .top,.stats{grid-column:1/-1}
+  .mapwrap{grid-column:1;grid-row:3}
+  body.nodock{grid-template-columns:minmax(0,1fr)}
+  .dock{grid-column:2;grid-row:3;max-height:none;border-top:0;border-left:1px solid var(--rule);box-shadow:none;align-content:start;padding:22px 22px 28px;gap:14px}
+  .dock h2{font-size:22px}
+  .dock .lead{font-size:16.5px}
+  .top h1{font-size:20px}
+  .stats{font-size:14.5px;padding-block:8px}
+  .li{min-height:56px;font-size:17px}
+}
+.mapwrap.aiming #map{cursor:crosshair}
+.mapwrap.hovering #map{cursor:pointer}
+.tip{position:absolute;pointer-events:none;background:#15201A;color:#fff;border-radius:9px;padding:6px 10px;font-size:14px;font-weight:600;white-space:nowrap;box-shadow:0 4px 14px rgba(0,0,0,.35);transform:translate(14px,14px);max-width:60%;overflow:hidden;text-overflow:ellipsis}
+.tip small{display:block;font-weight:500;opacity:.75;font-size:12.5px}
+.kbd{font:600 12.5px var(--f-num);border:1px solid var(--rule);border-bottom-width:2px;border-radius:6px;padding:1px 6px;background:var(--panel2)}
+.sec{display:grid;gap:8px;margin-top:6px}
+.chips{display:flex;flex-wrap:wrap;gap:8px}
+.chip{display:inline-flex;align-items:center;gap:7px;border:2px solid var(--rule);background:var(--panel);color:var(--muted);border-radius:99px;padding:7px 13px 7px 9px;font-weight:650;font-size:15px;cursor:pointer}
+.chip svg{width:20px;height:20px;flex:none}
+.chip[aria-pressed="true"]{border-color:var(--accent);background:color-mix(in srgb,var(--accent) 16%,var(--panel));color:var(--fg)}
+.chip[aria-pressed="false"]{opacity:.6}
+.chip[aria-pressed="false"] svg{filter:grayscale(1)}
+.sec h3{margin:0;font-size:14px;letter-spacing:.06em;text-transform:uppercase;color:var(--muted)}
+.swl{display:grid;border:1px solid var(--rule);border-radius:14px;overflow:hidden}
+.swr{display:flex;align-items:center;gap:10px;padding:8px 10px 8px 14px;border-top:1px solid var(--rule);background:var(--panel)}
+.swr:first-child{border-top:0}
+.swr .nm{flex:1;min-width:0;border:0;background:none;text-align:left;cursor:pointer;padding:4px 0;font-size:16px;font-weight:650}
+.swr .nm small{display:block;font-weight:600;font-size:13.5px}
+.swr .nm small.on{color:var(--ok)} .swr .nm small.off{color:var(--red)}
+.b.sm{min-height:42px;font-size:15px;padding:6px 14px;flex:none;min-width:0}
+/* mapa */
+.w-case{fill:none;stroke:#050706;stroke-opacity:.75;stroke-linecap:round;stroke-linejoin:round}
+.w{fill:none;stroke-linecap:round;stroke-linejoin:round}
+.w.dead{stroke:#9aa29c;stroke-dasharray:5 5}
+.w.sel{stroke:#FFC93C;stroke-opacity:.45}
+.road{fill:none;stroke:#C9A15A;stroke-opacity:.55;stroke-linecap:round;stroke-linejoin:round}
+.lbl{font:700 12.5px var(--f-ui);fill:#fff;paint-order:stroke;stroke:#000;stroke-width:3px;stroke-linejoin:round}
+@media (prefers-reduced-motion:no-preference){.pulse{animation:pl 1.4s ease-out infinite}@keyframes pl{from{opacity:.9;transform:scale(.6)}to{opacity:0;transform:scale(1.7)}}}
+</style>
+
+<header class="top">
+  <div class="ttl"><h1>Cerco del rancho</h1><span class="save" id="save" role="status">Cargando…</span></div>
+  <span class="sp"></span>
+  <button class="tb" id="undo" type="button" disabled><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/></svg>Deshacer</button>
+  <button class="tb icon" id="menuBtn" type="button" aria-label="Más opciones" aria-expanded="false"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2.2"/><circle cx="12" cy="12" r="2.2"/><circle cx="19" cy="12" r="2.2"/></svg></button>
+</header>
+<div class="stats" id="stats" aria-live="polite"></div>
+
+<main class="mapwrap" id="wrap">
+  <svg id="map" aria-label="Mapa del cerco eléctrico sobre la foto del rancho">
+    <g id="world">
+      <image id="photo" href="rancho-cel.jpg" x="0" y="0" preserveAspectRatio="none"></image>
+      <g id="g-road"></g>
+      <g id="g-wire"></g>
+      <g id="g-draft"></g>
+    </g>
+    <g id="g-sym"></g>
+  </svg>
+  <div class="aim" id="aim" hidden><svg viewBox="-32 -32 64 64" aria-hidden="true">
+    <circle r="15" fill="none" stroke="#000" stroke-opacity=".55" stroke-width="5"/>
+    <circle r="15" fill="none" stroke="#fff" stroke-width="2.5"/>
+    <path d="M0 -30V-19M0 19V30M-30 0H-19M19 0H30" stroke="#000" stroke-opacity=".55" stroke-width="5" stroke-linecap="round"/>
+    <path d="M0 -30V-19M0 19V30M-30 0H-19M19 0H30" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>
+    <circle r="2.6" fill="#fff" stroke="#000" stroke-width="1"/></svg></div>
+  <div class="tools2" id="tools2">
+    <button class="zb add" type="button" id="tAdd" aria-label="Agregar algo" data-tip="Agregar algo" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="zb" type="button" id="tFilter" aria-label="Qué se ve en el mapa" data-tip="Qué se ve en el mapa" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg><i class="dot" id="fDot" hidden></i></button>
+    <button class="zb" type="button" id="tAsk" aria-label="Preguntas de Claude" data-tip="Preguntas de Claude"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.3a2.8 2.8 0 1 1 3.9 2.6c-.7.3-1.2.9-1.2 1.7"/><circle cx="12" cy="17" r=".9" fill="currentColor"/></svg><b class="badge" id="askBadge"></b></button>
+  </div>
+  <div class="pop" id="pop" hidden role="dialog" aria-modal="false"></div>
+  <div class="zoom">
+    <button class="zb" type="button" id="zin" aria-label="Acercar" data-tip="Acercar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
+    <button class="zb" type="button" id="zout" aria-label="Alejar" data-tip="Alejar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M5 12h14"/></svg></button>
+    <button class="zb" type="button" id="zfit" aria-label="Ver todo el rancho" data-tip="Ver todo el rancho"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+  </div>
+  <div class="tip" id="tip" hidden></div>
+  <div class="zlvl" id="zlvl" aria-live="off"><span id="zlvlTxt"></span><span class="bar"><i id="zbar"></i><b id="zbarTxt"></b></span></div>
+  <div class="snack" id="snack" hidden role="status"><p id="snackTxt"></p><button type="button" id="snackBtn" hidden>Deshacer</button></div>
+  <div class="menu" id="menu" hidden></div>
+</main>
+
+<section class="dock" id="dock" aria-live="polite"></section>
+<div class="modal" id="modal" hidden></div>
+
+<script>
+const BASE = {"v":1,"mpp":1.8475750577367205,"size":[976,1170],"energizers":[{"id":"E1","name":"Energizador del interior","x":337,"y":492,"on":true},{"id":"E2","name":"Energizador del perímetro","x":281,"y":475,"on":true}],"wires":[{"id":"EL","name":"Salida del energizador","kind":"fence","pts":[[337,492],[318.5,519.3]],"from":"E1"},{"id":"H2","name":"Casa → camino","kind":"fence","pts":[[337,492],[360,488],[402,526]],"from":"E1"},{"id":"HL","name":"Casa → callejón norte","kind":"fence","pts":[[337,492],[359,463]],"from":"E1"},{"id":"HN","name":"Pared norte de la casa","kind":"fence","pts":[[337,492],[329,470]],"from":"E1"},{"id":"c_HLw","name":"Cable sobre puerta","kind":"cable","pts":[[329.0,470.0],[328.0,462.0]],"from":"HN"},{"id":"HLw","name":"Casa → callejón norte (lado oeste)","kind":"fence","pts":[[328.0,462.0],[338.0,445.0]],"from":"c_HLw"},{"id":"ENC","name":"Cobertizo, lado oeste","kind":"fence","pts":[[318.5,519.3],[316,513],[304,528],[331,556]],"from":"EL"},{"id":"SHA","name":"Cobertizo, lado este","kind":"fence","pts":[[320.0,517.0],[351,539],[336,557]],"from":"EL"},{"id":"DW","name":"Orilla de la entrada a la casa","kind":"fence","pts":[[402,526],[385,548],[352,524]],"from":"H2"},{"id":"HC","name":"Cobertizo → corral","kind":"fence","pts":[[331,556],[325,564],[280,522]],"from":"ENC"},{"id":"CORRAL","name":"Corral","kind":"fence","pts":[[280,522],[300,526],[304,501],[279,502],[280,522]],"from":"HC"},{"id":"c_CL","name":"Cable sobre puerta","kind":"cable","pts":[[279.8,517.9],[258.0,531.0]],"from":"CORRAL","gate":[278,517]},{"id":"CL","name":"Corral → potrero oeste","kind":"fence","pts":[[258.0,531.0],[240,566]],"from":"c_CL"},{"id":"c_CT","name":"Cable sobre puerta","kind":"cable","pts":[[304.0,501.0],[300.0,486.0]],"from":"CORRAL"},{"id":"CT","name":"Corral → perímetro","kind":"fence","pts":[[300.0,486.0],[283,470]],"from":"c_CT"},{"id":"HT","name":"Pared oeste de la casa","kind":"fence","pts":[[300.0,486.0],[311,462]],"from":"CT"},{"id":"c_LA1","name":"Cable sobre puerta","kind":"cable","pts":[[359,463],[346,446]],"from":"HL","gate":[356,455]},{"id":"LA1","name":"Callejón norte, alambre este (1)","kind":"fence","pts":[[346,446],[410,371]],"from":"c_LA1"},{"id":"LA2","name":"Callejón norte, alambre este (2)","kind":"fence","pts":[[410,371],[491.1,263.2]],"from":"LA1"},{"id":"LB1","name":"Callejón norte, alambre oeste (1)","kind":"fence","pts":[[338.0,445.0],[358,417]],"from":"HLw"},{"id":"c_LB2","name":"Cable sobre puerta","kind":"cable","pts":[[358.0,417.0],[368.0,407.0]],"from":"LB1","gate":[363,413]},{"id":"LB2","name":"Callejón norte, alambre oeste (2)","kind":"fence","pts":[[368.0,407.0],[391,379]],"from":"c_LB2"},{"id":"c_LB3","name":"Cable sobre puerta","kind":"cable","pts":[[391.0,379.0],[404.0,363.0]],"from":"LB2","gate":[398,371]},{"id":"LB3","name":"Callejón norte, alambre oeste (3)","kind":"fence","pts":[[404.0,363.0],[484.4,258.9]],"from":"c_LB3"},{"id":"N1","name":"Esquina norte","kind":"fence","pts":[[491.1,263.2],[469,249]],"from":"LA2"},{"id":"N2b","name":"División norte 1, desde el callejón","kind":"fence","pts":[[492,262],[539,293]],"from":"LA2"},{"id":"N3b","name":"División norte 2, desde el callejón","kind":"fence","pts":[[458.0,307.2],[509,352]],"from":"LA2"},{"id":"N4a","name":"División norte 3, desde el callejón","kind":"fence","pts":[[427.0,348.5],[443,372]],"from":"LA2"},{"id":"RNW","name":"Camino, alambre norte","kind":"fence","pts":[[402,526],[729,159]],"from":"H2"},{"id":"RSE1","name":"Camino, alambre sur (1)","kind":"fence","pts":[[402,526],[412,528],[500,431]],"from":"H2"},{"id":"c_RSE2","name":"Cable sobre puerta","kind":"cable","pts":[[500,431],[510,417]],"from":"RSE1","gate":[505,424]},{"id":"RSE2","name":"Camino, alambre sur (2)","kind":"fence","pts":[[510,417],[738,162]],"from":"c_RSE2"},{"id":"H3","name":"Ramal camino → centro","kind":"fence","pts":[[402,526],[414,524],[453,546]],"from":"H2"},{"id":"c_HK","name":"Cable sobre puerta","kind":"cable","pts":[[402,526],[404,539]],"from":"H2","gate":[406,536]},{"id":"HK","name":"Paso al callejón del centro","kind":"fence","pts":[[404,539],[412,549]],"from":"c_HK"},{"id":"H1","name":"Ramal camino → casa","kind":"fence","pts":[[417.1,509.1],[372,466]],"from":"RNW"},{"id":"N4b","name":"División norte 3, desde el camino","kind":"fence","pts":[[497.8,418.4],[462,382]],"from":"RNW"},{"id":"N3a","name":"División norte 2, desde el camino","kind":"fence","pts":[[537.3,374.1],[520,360]],"from":"RNW"},{"id":"N2a","name":"División norte 1, desde el camino","kind":"fence","pts":[[581.6,324.4],[554,306]],"from":"RNW"},{"id":"E4","name":"Ramal que cruza el camino","kind":"fence","pts":[[487.0,430.6],[473,431],[470,440],[492,473],[530,495],[563,500]],"from":"RNW"},{"id":"C1","name":"Diagonal del potrero central","kind":"fence","pts":[[520.0,489.2],[468,549]],"from":"E4"},{"id":"E2L","name":"Camino → potrero este","kind":"fence","pts":[[500,431],[577,496]],"from":"RSE1"},{"id":"E6","name":"Callejón este, alambre de adentro","kind":"fence","pts":[[577,496],[505,579]],"from":"E2L"},{"id":"C1b","name":"Remate de la diagonal central","kind":"fence","pts":[[505,579],[480,557]],"from":"E6"},{"id":"c_PU","name":"Cable sobre puerta","kind":"cable","pts":[[412,549],[418,550]],"from":"HK"},{"id":"PU","name":"Callejón casa–centro, alambre norte","kind":"fence","pts":[[418,550],[498,588]],"from":"c_PU"},{"id":"PL","name":"Callejón casa–centro, alambre sur","kind":"fence","pts":[[412,549],[412,557],[481,591]],"from":"HK"},{"id":"VL","name":"Callejón casa–centro → potrero cerrado","kind":"fence","pts":[[412,549],[398,568],[383,560]],"from":"HK"},{"id":"c_LOOP","name":"Cable sobre puerta","kind":"cable","pts":[[383,560],[364,575]],"from":"VL","gate":[368,566]},{"id":"LOOP","name":"Potrero cerrado","kind":"fence","pts":[[364,575],[354,602],[372,622],[422,648],[432,610],[394,570],[381,566],[364,575]],"from":"c_LOOP"},{"id":"c_E5","name":"Cable sobre puerta","kind":"cable","pts":[[498.0,588.0],[510.0,592.0]],"from":"PU","gate":[513,596]},{"id":"E5","name":"Callejón este, alambre de afuera","kind":"fence","pts":[[510.0,592.0],[516,574],[580,506]],"from":"c_E5"},{"id":"E3","name":"Subida a la puerta del este","kind":"fence","pts":[[580,506],[597,480]],"from":"E5"},{"id":"c_E1L","name":"Cable sobre puerta","kind":"cable","pts":[[597,480],[612.0,482.0]],"from":"E3","gate":[603,476]},{"id":"E1L","name":"Potrero este → perímetro","kind":"fence","pts":[[612.0,482.0],[744,569]],"from":"c_E1L"},{"id":"SE0","name":"Paso a la línea sureste","kind":"fence","pts":[[481,591],[495,600]],"from":"PL"},{"id":"c_SE1","name":"Cable sobre puerta","kind":"cable","pts":[[495,600],[515.0,606.0]],"from":"SE0"},{"id":"SE1","name":"Centro → perímetro sureste","kind":"fence","pts":[[515.0,606.0],[653,686]],"from":"c_SE1"},{"id":"TR1","name":"Troncal central","kind":"fence","pts":[[481,591],[383.0,701.0]],"from":"PL"},{"id":"C2","name":"Troncal → ramal oeste","kind":"fence","pts":[[404.6,676.8],[358,646]],"from":"TR1"},{"id":"TRNWu","name":"Cruce central → oeste, alambre norte","kind":"fence","pts":[[383.0,701.0],[348,680]],"from":"TR1"},{"id":"c_L2a","name":"Cable sobre puerta","kind":"cable","pts":[[348.0,680.0],[326.0,665.0]],"from":"TRNWu","gate":[337,672]},{"id":"L2a","name":"Callejón oeste, alambre este","kind":"fence","pts":[[326.0,665.0],[299,644],[304,630],[339,567],[349,572],[362,548],[371,561]],"from":"c_L2a"},{"id":"C3","name":"Ramal del callejón oeste","kind":"fence","pts":[[311.4,616.7],[339,636]],"from":"L2a"},{"id":"TRNWl","name":"Cruce central → oeste, alambre sur","kind":"fence","pts":[[383.0,701.0],[368,707],[344,691]],"from":"TR1"},{"id":"c_TRNWl2","name":"Cable sobre puerta","kind":"cable","pts":[[344,691],[320,677]],"from":"TRNWl","gate":[332,683]},{"id":"TRNWl2","name":"Cruce central → oeste, alambre sur (2)","kind":"fence","pts":[[320,677],[298,666]],"from":"c_TRNWl2"},{"id":"c_S2","name":"Cable sobre puerta","kind":"cable","pts":[[383.0,701.0],[372.0,716.0]],"from":"TR1","gate":[379,709]},{"id":"S2","name":"Cruce central → nodo suroeste","kind":"fence","pts":[[372.0,716.0],[253.0,848.0]],"from":"c_S2"},{"id":"c_S1","name":"Cable sobre puerta","kind":"cable","pts":[[388.6,694.7],[403.0,711.0]],"from":"TR1"},{"id":"S1","name":"Cruce central → perímetro sureste","kind":"fence","pts":[[403.0,711.0],[558,806]],"from":"c_S1"},{"id":"M0","name":"Nodo suroeste","kind":"fence","pts":[[253.0,848.0],[234,862]],"from":"S2"},{"id":"c_W1","name":"Cable sobre puerta","kind":"cable","pts":[[248.2,851.5],[237.0,842.0]],"from":"M0"},{"id":"W1","name":"Línea oeste","kind":"fence","pts":[[237.0,842.0],[217,816],[165,662],[182,631]],"from":"c_W1"},{"id":"L2b","name":"Callejón oeste (sur), alambre este","kind":"fence","pts":[[237.0,842.0],[225,815],[225,773],[284,665]],"from":"W1"},{"id":"c_S4","name":"Cable sobre puerta","kind":"cable","pts":[[248.2,851.5],[264.0,861.0]],"from":"M0"},{"id":"S4","name":"Nodo suroeste → perímetro este","kind":"fence","pts":[[264.0,861.0],[488,871]],"from":"c_S4"},{"id":"c_M5","name":"Cable sobre puerta","kind":"cable","pts":[[248.2,851.5],[244.0,877.0]],"from":"M0","gate":[239,870]},{"id":"M5","name":"Nodo suroeste → switch sur","kind":"fence","pts":[[244.0,877.0],[233.0,890.0]],"from":"c_M5"},{"id":"S5","name":"Nodo suroeste → perímetro sur","kind":"fence","pts":[[233.0,890.0],[404,997]],"from":"M5"},{"id":"c_L1","name":"Cable sobre puerta","kind":"cable","pts":[[331,556],[320,582]],"from":"ENC","gate":[323,571]},{"id":"L1","name":"Callejón oeste, alambre oeste","kind":"fence","pts":[[320,582],[204,772]],"from":"c_L1"},{"id":"S3","name":"Ramal oeste → centro","kind":"fence","pts":[[243.8,706.7],[282,727],[315,763]],"from":"L1"},{"id":"CW1b","name":"Potrero oeste, lado norte (este)","kind":"fence","pts":[[296.8,620.0],[254,579]],"from":"L1"},{"id":"WX","name":"Diagonal del potrero oeste","kind":"fence","pts":[[264.8,672.5],[192.0,616.0]],"from":"L1"},{"id":"CW1a","name":"Potrero oeste, lado norte (oeste)","kind":"fence","pts":[[192.0,616.0],[236,574]],"from":"WX"},{"id":"PER_N","name":"Perímetro norte","kind":"perimeter","pts":[[281,475],[278,469],[466,242],[324,126],[321,114],[581,15],[727,153]],"from":"E2"},{"id":"PER_W","name":"Perímetro oeste","kind":"perimeter","pts":[[281,475],[278,469],[39,755]],"from":"E2"},{"id":"PER_S","name":"Perímetro sur y este","kind":"perimeter","pts":[[39,755],[52,856],[64,882],[300,1133],[957,317],[955,306],[740,162]],"from":"PER_W"},{"id":"PSt1","name":"Ramal del perímetro junto al corral","kind":"fence","pts":[[243.8,510.0],[257,521]],"from":"PER_W"},{"id":"PS","name":"Ramal del perímetro al potrero oeste","kind":"fence","pts":[[151.1,620.8],[157,644]],"from":"PER_W"},{"id":"S6","name":"Ramal del perímetro al nodo suroeste","kind":"fence","pts":[[137.7,960.4],[223,873]],"from":"PER_S"}],"parts":[{"id":"s5_0","type":"switch","on":"DW","s":4.8,"name":"Salida al camino","open":false,"grp":"S5"},{"id":"s5_1","type":"switch","on":"RNW","s":3.9,"name":"Salida al camino","open":false,"grp":"S5"},{"id":"s5_2","type":"switch","on":"RSE1","s":5.0,"name":"Salida al camino","open":false,"grp":"S5"},{"id":"s5_3","type":"switch","on":"H3","s":4.9,"name":"Salida al camino","open":false,"grp":"S5"},{"id":"s5_4","type":"switch","on":"c_HK","s":4.6,"name":"Salida al camino","open":false,"grp":"S5"},{"id":"s2_0","type":"switch","on":"LA2","s":5.0,"name":"Callejón norte","open":false,"grp":"S2"},{"id":"s2_1","type":"switch","on":"c_LB3","s":5.0,"name":"Callejón norte","open":false,"grp":"S2"},{"id":"s4_0","type":"switch","on":"H1","s":5.1,"name":"Ramal camino → casa","open":false,"grp":null},{"id":"s3_0","type":"switch","on":"N3a","s":8.1,"name":"División norte 2","open":false,"grp":null},{"id":"s1_0","type":"switch","on":"N2a","s":7.1,"name":"División norte 1","open":false,"grp":null},{"id":"s6_0","type":"switch","on":"SE0","s":5.0,"name":"Troncal central","open":false,"grp":"S6"},{"id":"s6_1","type":"switch","on":"TR1","s":2.5,"name":"Troncal central","open":false,"grp":"S6"},{"id":"s8_0","type":"switch","on":"TRNWu","s":4.9,"name":"Cruce central → oeste (alambre norte)","open":false,"grp":null},{"id":"s9_0","type":"switch","on":"TRNWl","s":4.8,"name":"Cruce central → oeste (alambre sur)","open":false,"grp":null},{"id":"s10_0","type":"switch","on":"c_S2","s":5.0,"name":"Cruce central → suroeste","open":false,"grp":null},{"id":"s11_0","type":"switch","on":"c_S1","s":6.9,"name":"Cruce central → sureste","open":false,"grp":null},{"id":"s13_0","type":"switch","on":"M0","s":4.5,"name":"Nodo suroeste","open":false,"grp":null},{"id":"s14_0","type":"switch","on":"S5","s":5.0,"name":"Nodo suroeste → sur","open":false,"grp":null},{"id":"s7_0","type":"switch","on":"WX","s":5.9,"name":"Potrero oeste","open":false,"grp":null},{"id":"s12_0","type":"switch","on":"PER_S","s":5.0,"name":"Perímetro, esquina oeste","open":false,"grp":null},{"id":"g0","type":"gate","a":{"on":"RNW","s":491.5},"b":{"on":"RSE2","s":342.1}},{"id":"g1","type":"gate","a":{"on":"N2b","s":56.3},"b":{"on":"N2a","s":33.2}},{"id":"g2","type":"gate","a":{"on":"N3a","s":22.3},"b":{"on":"N3b","s":67.9}},{"id":"g3","type":"gate","a":{"on":"N4a","s":28.4},"b":{"on":"N4b","s":51.1}},{"id":"g4","type":"gate","a":{"on":"H1","s":62.4},"b":{"on":"HL","s":36.4}},{"id":"g5","type":"gate","a":{"on":"LB1","s":4.5},"b":{"on":"LA1","s":0}},{"id":"g6","type":"gate","a":{"on":"E3","s":7.2},"b":{"on":"E2L","s":100.8}},{"id":"g7","type":"gate","a":{"on":"C1","s":79.2},"b":{"on":"H3","s":56.9}},{"id":"g8","type":"gate","a":{"on":"ENC","s":6.9},"b":{"on":"CORRAL","s":38.1}},{"id":"g9","type":"gate","a":{"on":"PSt1","s":17.2},"b":{"on":"CL","s":0}},{"id":"g10","type":"gate","a":{"on":"CW1a","s":60.8},"b":{"on":"CL","s":39.4}},{"id":"g11","type":"gate","a":{"on":"L2a","s":121.6},"b":{"on":"SHA","s":61.4}},{"id":"g12","type":"gate","a":{"on":"C3","s":33.7},"b":{"on":"C2","s":55.9}},{"id":"g13","type":"gate","a":{"on":"L2b","s":194.6},"b":{"on":"TRNWl2","s":24.6}},{"id":"g14","type":"gate","a":{"on":"W1","s":199.6},"b":{"on":"PS","s":23.9}},{"id":"g15","type":"gate","a":{"on":"WX","s":92.2},"b":{"on":"CW1a","s":0}},{"id":"g16","type":"gate","a":{"on":"W1","s":81.2},"b":{"on":"L1","s":222.6}},{"id":"g17","type":"gate","a":{"on":"S3","s":92.1},"b":{"on":"S2","s":73.3}},{"id":"g18","type":"gate","a":{"on":"M0","s":23.6},"b":{"on":"S6","s":122.1}},{"id":"g19","type":"gate","a":{"on":"PER_S","s":801.7},"b":{"on":"S4","s":224.2}},{"id":"q3","type":"note","by":"claude","x":505,"y":424,"text":"?3 Esta marca amarilla gruesa sobre el camino la tomé como cablecito sobre una puerta, no como rayito. ¿Correcto?","answer":""},{"id":"q4","type":"note","by":"claude","x":404,"y":528,"text":"?4 Este switch me quedó como el principal: corta el camino, el centro y todo el sur (unos 8 km). ¿Es así, o solo corta el camino?","answer":""},{"id":"q5","type":"note","by":"claude","x":417,"y":509,"text":"?5 ¿Este switch corta solo el ramal que va hacia la casa, o todo el alambre norte del camino?","answer":""},{"id":"q6","type":"note","by":"claude","x":406,"y":365,"text":"?6 Hay una rayita roja en el callejón. La puse como switch que corta los dos alambres del callejón hacia el norte. ¿Es un switch?","answer":""},{"id":"q7","type":"note","by":"claude","x":507,"y":588,"text":"?7 Centro: supuse que el alambre norte del callejón brinca la puerta y sube por el alambre de afuera hasta la línea del perímetro este, y que el switch corta la troncal y la línea al sureste.","answer":""},{"id":"q8","type":"note","by":"claude","x":384,"y":704,"text":"?8 Aquí conté 4 switches: dos hacia el oeste (uno por alambre), uno al suroeste y uno al sureste. ¿Son 4?","answer":""},{"id":"q9","type":"note","by":"claude","x":248,"y":854,"text":"?9 Nodo suroeste: puse el switch de arriba cortando todo el nodo (línea oeste, línea al este y línea al sur).","answer":""},{"id":"q10","type":"note","by":"claude","x":318,"y":516,"text":"?10 Zona de la casa, cobertizo y corral: es donde menos seguro estoy de qué se conecta con qué.","answer":""},{"id":"q11","type":"note","by":"claude","x":39,"y":756,"text":"?11 Rayita roja en la esquina oeste del perímetro: la puse como switch que corta el lado sur y este del perímetro.","answer":""},{"id":"q12","type":"note","by":"claude","x":197,"y":910,"text":"?12 Tres ramales salen del perímetro hacia adentro (este, el del potrero oeste y el del corral). Los puse en el circuito del perímetro.","answer":""},{"id":"q13","type":"note","by":"claude","x":485,"y":288,"text":"?13 Vi signos de interrogación tuyos en los potreros del norte y junto al ramal oeste. ¿Falta algo ahí?","answer":""}]};
+const ROAD = [[733,160],[407,529],[389,550],[352,524],[336,508]];
+const DOC_PATH = 'cerco/red', LS_KEY = 'cerco-editor-v3', LS_INTRO = 'cerco-intro-v1';
+const NS = 'http://www.w3.org/2000/svg';
+const $ = id => document.getElementById(id);
+const CIRC_COL = ['#FFF1C9', '#6FE3EE', '#B6F36B', '#FF9EDB', '#FFB36B'];
+const CABLE_COL = '#FFD23F';
+const BARB_COL = '#D9B38C';   // cerca sin corriente (púas u otro alambre)
+const isBarb = w => !!w && w.kind === 'barb';
+const isEgate = w => !!w && w.kind === 'cable' && !!w.egate;   // puerta blanca: como un switch en puerta (cerrada pasa la corriente)
+const cabV = w => w.egate ? V('gate') : V('cable');
+
+let net = JSON.parse(JSON.stringify(BASE));
+let view = {k: 1, tx: 0, ty: 0};
+let mode = 'idle', sel = null, draft = null, ctx = {};
+let undoSt = [], redoSt = [];
+let showQs = false; try { showQs = localStorage.getItem('cerco-ver-preguntas') === '1'; } catch (e) {}
+const isQ = p => p.type === 'note' && p.by === 'claude';
+// filtro: qué se ve en el mapa (el alambre siempre se ve)
+const FILTERS = [['flow', 'Flechas del flujo'], ['energizer', 'Energizadores'], ['switch', 'Switches'], ['gate', 'Puertas'], ['cable', 'Cables puente'], ['barb', 'Cercas sin corriente'], ['end', 'Fines de línea'], ['note', 'Notas']];
+let vis = {}; try { vis = JSON.parse(localStorage.getItem('cerco-filtro') || '{}') || {}; } catch (e) {}
+const V = t => vis[t] !== false;
+const filtering = () => FILTERS.some(([k]) => !V(k));
+const partKey = p => p.type === 'note' ? 'note' : p.type;
+function setVis(next) { vis = next; try { localStorage.setItem('cerco-filtro', JSON.stringify(vis)); } catch (e) {} render(); renderDock(); updateZoomChip(); if (popKind === 'filter') renderPop(); }
+const qHidden = p => isQ(p) && !showQs && !(mode === 'ask' && ctx.list && ctx.list[ctx.i] === p.id);   // las preguntas no estorban en el mapa
+let SOL = null, AIM = null;
+
+/* ---------- geometría ---------- */
+const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
+function plen(p) { let s = 0; for (let i = 1; i < p.length; i++) s += dist(p[i - 1], p[i]); return s; }
+function project(q, p) {
+  let best = {d: 1e9, s: 0, x: p[0][0], y: p[0][1], i: 0}, acc = 0;
+  for (let i = 1; i < p.length; i++) {
+    const a = p[i - 1], b = p[i], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1e-9;
+    let t = ((q[0] - a[0]) * dx + (q[1] - a[1]) * dy) / (l * l); t = Math.max(0, Math.min(1, t));
+    const x = a[0] + t * dx, y = a[1] + t * dy, d = Math.hypot(q[0] - x, q[1] - y);
+    if (d < best.d) best = {d, s: acc + t * l, x, y, i};
+    acc += l;
+  }
+  return best;
+}
+function pointAt(p, s) {
+  let acc = 0;
+  for (let i = 1; i < p.length; i++) {
+    const l = dist(p[i - 1], p[i]);
+    if (acc + l >= s && l > 0) { const t = (s - acc) / l; return [p[i - 1][0] + t * (p[i][0] - p[i - 1][0]), p[i - 1][1] + t * (p[i][1] - p[i - 1][1]), Math.atan2(p[i][1] - p[i - 1][1], p[i][0] - p[i - 1][0])]; }
+    acc += l;
+  }
+  const n = p.length; return [p[n - 1][0], p[n - 1][1], n > 1 ? Math.atan2(p[n - 1][1] - p[n - 2][1], p[n - 1][0] - p[n - 2][0]) : 0];
+}
+function splitAt(p, s) {
+  if (s <= 0) return [[], p.slice()];
+  const out = [p[0]]; let acc = 0;
+  for (let i = 1; i < p.length; i++) {
+    const l = dist(p[i - 1], p[i]);
+    if (acc + l >= s) { const q = pointAt(p, s); return [out.concat([[q[0], q[1]]]), [[q[0], q[1]]].concat(p.slice(i))]; }
+    out.push(p[i]); acc += l;
+  }
+  return [p.slice(), []];
+}
+const M = u => u * net.mpp;
+const fmt = m => m >= 1000 ? (m / 1000).toFixed(m >= 10000 ? 1 : 2).replace(/\.?0+$/, '') + ' km' : Math.round(m) + ' m';
+const W = id => net.wires.find(w => w.id === id);
+const EN = id => net.energizers.find(e => e.id === id);
+const PT = id => net.parts.find(p => p.id === id);
+const uid = p => p + Math.random().toString(36).slice(2, 7);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;'}[c]));
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+const R = px => px / view.k;   // pixeles de pantalla -> unidades del mapa
+function anchorPos(an) { const w = an && W(an.on); if (!w) return null; return pointAt(w.pts, Math.min(an.s, plen(w.pts))); }
+const isGate2 = p => p.type === 'gate' && p.a && p.b;
+function partPos(p) {
+  if (isGate2(p)) { const A = anchorPos(p.a), B = anchorPos(p.b); if (A && B) return [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2, Math.atan2(B[1] - A[1], B[0] - A[0])]; }
+  if (p.on) { const w = W(p.on); if (w) {
+    if (w.kind === 'cable') { const L = plen(w.pts) || 1, arc = cableArc(w), q = pointAt(arc, Math.min(1, p.s / L) * plen(arc)); return [q[0], q[1], q[2]]; }   // sobre el arco
+    const q = pointAt(w.pts, Math.min(p.s, plen(w.pts))); return [q[0], q[1], q[2]]; } } return [p.x, p.y, 0]; }
+// el alambre o cable más cercano; en los cables se mide sobre el arco y se regresa la distancia a lo largo de la cuerda
+function nearestLine(p, r, withCables, withBarb) {
+  let best = null;
+  net.wires.forEach(w => {
+    if (isBarb(w) && (!withBarb || !V('barb'))) return;
+    if (w.kind === 'cable' && (!withCables || w.egate || !cabV(w))) return;
+    if (w.kind === 'cable') { const arc = cableArc(w), q = project(p, arc); if (q.d <= r && (!best || q.d < best.q.d)) best = {w, q: {x: q.x, y: q.y, d: q.d, s: q.s / (plen(arc) || 1) * plen(w.pts)}}; return; }
+    const q = project(p, w.pts); if (q.d <= r && (!best || q.d < best.q.d)) best = {w, q};
+  });
+  return best;
+}
+function nameOf(id) { const e = EN(id); if (e) return e.name; const w = W(id); return w ? w.name : 'nada'; }
+
+/* ---------- simulación: la corriente sigue el sentido del dibujo ---------- */
+const TOUCH_E = 2, TOUCH_W = 1.5;   // qué tan cerca debe quedar la punta para que se toquen (unidades del mapa, ~3.7 y ~2.8 m)
+function solve(net, flip) {
+  const cut = {}, len = {}, reach = {}, root = {}, why = {}, far = {};
+  net.wires.forEach(w => { len[w.id] = plen(w.pts); cut[w.id] = len[w.id]; });
+  net.parts.forEach(p => {
+    if (!p.on || !(p.on in cut)) return;
+    let open = p.type === 'end' || (p.type === 'switch' && p.open);
+    if (flip && p.type === 'switch' && (p.id === flip.id || (flip.grp && p.grp === flip.grp))) open = !flip.open;
+    const s = Math.min(p.s, len[p.on]);
+    if (open && s < cut[p.on]) { cut[p.on] = s; why[p.on] = p.id; }
+  });
+  net.wires.forEach(w => { if (isEgate(w)) { let open = !!w.open; if (flip && flip.egate === w.id) open = !open; if (open) cut[w.id] = 0; } });   // puerta blanca abierta: no pasa nada
+  const visiting = new Set();
+  function rootOf(id, depth) { if (depth > 400) return null; if (EN(id)) return id; const w = W(id); if (!w || !w.from) return null; return rootOf(w.from, depth + 1); }
+  function Rc(id) {
+    if (id in reach) return reach[id];
+    const w = W(id); if (!w) return 0;
+    if (isBarb(w)) return (reach[id] = 0);   // la cerca sin corriente nunca lleva corriente
+    if (visiting.has(id)) return 0;
+    visiting.add(id);
+    let ok = false;
+    if (w.from) {   // la corriente solo pasa si de verdad se tocan (la punta sobre el energizador o sobre el alambre)
+      const e = EN(w.from);
+      if (e) { if (dist(w.pts[0], [e.x, e.y]) > TOUCH_E) far[id] = true; else ok = e.on !== false; }
+      else { const pw = W(w.from); if (pw) { const pr = project(w.pts[0], pw.pts); if (pr.d > TOUCH_W) far[id] = true; else { const r = Rc(pw.id); ok = r > 0 && (pr.s < r - 1e-6 || r >= len[pw.id] - 1e-6); } } }
+    }
+    visiting.delete(id);
+    reach[id] = ok ? cut[id] : 0;
+    return reach[id];
+  }
+  const circ = {}; net.energizers.forEach(e => circ[e.id] = {live: 0, total: 0});
+  let dead = 0, orphan = 0;
+  net.wires.forEach(w => { Rc(w.id); if (isBarb(w)) return; root[w.id] = rootOf(w.id, 0); const m = M(len[w.id]), lv = M(reach[w.id]);
+    if (root[w.id] && circ[root[w.id]]) { circ[root[w.id]].total += m; circ[root[w.id]].live += lv; } else orphan += m;
+    dead += m - lv; });
+  return {cut, len, reach, root, why, circ, dead, orphan, far};
+}
+const liveTotal = s => Object.values(s.reach).reduce((a, b) => a + b, 0);
+function circColor(rootId) { const i = net.energizers.findIndex(e => e.id === rootId); return i < 0 ? '#9aa29c' : CIRC_COL[i % CIRC_COL.length]; }
+
+/* ---------- dibujo del mapa ---------- */
+function el(tag, attrs, parent) { const e = document.createElementNS(NS, tag); for (const k in attrs) if (attrs[k] != null) e.setAttribute(k, attrs[k]); if (parent) parent.appendChild(e); return e; }
+const ptsStr = p => p.map(q => q[0].toFixed(1) + ',' + q[1].toFixed(1)).join(' ');
+const NSS = {'vector-effect': 'non-scaling-stroke'};
+const gWire = $('g-wire'), gSym = $('g-sym'), gDraft = $('g-draft'), svg = $('map'), world = $('world');
+
+function initStatic() {
+  const [Wd, Hd] = net.size; const ph = $('photo'); ph.setAttribute('width', Wd); ph.setAttribute('height', Hd);
+  el('polyline', Object.assign({points: ptsStr(ROAD), class: 'road', 'stroke-width': 7}, NSS), $('g-road'));
+}
+// un alambre que se acaba pegado a otro (en el poste solo lleva el aislador de porcelana y ya no sigue):
+// llega completo hasta el cruce y lleva un puntito negro chico tantito antes, para no tapar la conexión del otro alambre
+let GAP = new Set();
+const END_R = 4.8;   // tamaño del punto negro de fin de línea (todos iguales)
+function tipTouch(w) { const e = w.pts[w.pts.length - 1]; return net.wires.some(o => o !== w && o.kind !== 'cable' && !isBarb(o) && project(e, o.pts).d < 1.5); }
+const drawPts = w => w.pts;
+function endMark(w) { const L = plen(w.pts); return pointAt(w.pts, GAP.has(w.id) ? L - Math.min((4.8 * symF() + 1.5) / view.k, L * 0.3) : L); }
+const endPt = w => endMark(w);
+function render() {
+  SOL = solve(net);
+  GAP = new Set(autoEnds().filter(w => w.kind !== 'cable' && tipTouch(w)).map(w => w.id));
+  gWire.textContent = '';
+  const hw = sel && sel.t === 'w' && W(sel.id) ? W(sel.id) : ((mode === 'from' || mode === 'cut') && W(ctx.id)) ? W(ctx.id) : null;
+  if (hw && hw.kind !== 'cable') el('polyline', Object.assign({points: ptsStr(hw.pts), class: 'w sel', 'stroke-width': 18}, NSS), gWire);
+  net.wires.forEach(w => { if (w.kind !== 'cable' && !(isBarb(w) && !V('barb'))) el('polyline', Object.assign({points: ptsStr(drawPts(w)), class: 'w-case', 'stroke-width': w.kind === 'perimeter' ? 6.5 : isBarb(w) ? 4.5 : 5}, NSS), gWire); });
+  net.wires.forEach(w => {
+    if (w.kind === 'cable') return;   // el cable puente se dibuja como arco encima de todo
+    if (isBarb(w)) { if (V('barb')) el('polyline', Object.assign({points: ptsStr(w.pts), class: 'w', stroke: BARB_COL, 'stroke-width': 2.2}, NSS), gWire); return; }   // sus crucecitas van en renderSyms
+    const r = SOL.reach[w.id], L = SOL.len[w.id], col = w.kind === 'cable' ? CABLE_COL : circColor(SOL.root[w.id]);
+    const sw = w.kind === 'perimeter' ? 3.6 : w.kind === 'cable' ? 3.2 : 2.7;
+    const dp = drawPts(w), DL = plen(dp);
+    if (r >= DL - 1e-6) el('polyline', Object.assign({points: ptsStr(dp), class: 'w', stroke: col, 'stroke-width': sw}, NSS), gWire);
+    else {
+      const [a, b] = splitAt(dp, r);
+      if (a.length > 1 && r > 0) el('polyline', Object.assign({points: ptsStr(a), class: 'w', stroke: col, 'stroke-width': sw}, NSS), gWire);
+      if (b.length > 1) el('polyline', Object.assign({points: ptsStr(b), class: 'w dead', 'stroke-width': sw}, NSS), gWire);
+    }
+  });
+  gDraft.textContent = '';
+  if (draft && draft.pts.length > 1) el('polyline', Object.assign({points: ptsStr(draft.pts), fill: 'none', stroke: draft.kind === 'cable' ? CABLE_COL : draft.kind === 'barb' ? BARB_COL : '#FFC93C', 'stroke-width': 3.5, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'}, NSS), gDraft);
+  renderSyms(); renderStats(); renderUndo(); updateTools();
+}
+const SYM_REF = 5.7;   // zoom al que los símbolos tienen su tamaño completo (lo eligió Diego)
+const symF = () => Math.max(0.15, Math.min(1, view.k / SYM_REF));
+function S(x, y, parent, extra, noScale) { const f = noScale ? 1 : symF(); return el('g', Object.assign({transform: `translate(${x.toFixed(2)} ${y.toFixed(2)}) scale(${(f / view.k).toFixed(4)})`}, extra || {}), parent); }
+let symRoot = null, symK = 0;
+function renderSyms() {
+  if (!(view.k > 0) || !isFinite(view.k) || !isFinite(view.tx) || !isFinite(view.ty)) return;   // el mapa aún no tiene tamaño
+  gSym.textContent = '';
+  const g0 = el('g', {transform: `matrix(${view.k} 0 0 ${view.k} ${view.tx} ${view.ty})`}, gSym); symRoot = g0; symK = view.k;
+  const k = view.k, r = svg.getBoundingClientRect();
+  const vx0 = -view.tx / k, vy0 = -view.ty / k, vx1 = (r.width - view.tx) / k, vy1 = (r.height - view.ty) / k;
+  const inV = (x, y) => x > vx0 - 20 && x < vx1 + 20 && y > vy0 - 20 && y < vy1 + 20;
+  const step = Math.max(95 / k, 2);
+  net.wires.forEach(w => {
+    if (w.kind === 'cable' || isBarb(w) || !V('flow')) return;
+    const L = SOL.len[w.id], live = SOL.reach[w.id];
+    for (let s = Math.min(step * 0.5, L / 2), n = 0; s < L && n < 300; s += step, n++) {
+      if (s >= live) break;   // sin corriente no hay flujo: no hay flechas
+      const q = pointAt(w.pts, s); if (!inV(q[0], q[1])) continue;
+      // las flechas no siguen la regla de los símbolos: se ven grandes aunque te alejes (como antes)
+      const g = S(q[0], q[1], g0, null, true); g.setAttribute('transform', g.getAttribute('transform') + ` rotate(${(q[2] * 180 / Math.PI).toFixed(1)}) scale(${Math.max(0.55, Math.min(1, view.k / 1.6)).toFixed(3)})`);
+      el('path', {d: 'M-4 -4.5 1.5 0 -4 4.5', fill: 'none', stroke: s < live ? '#FF9A3C' : '#9aa29c', 'stroke-width': 2.4, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'}, g);
+    }
+  });
+  if (V('barb')) {   // cerca sin corriente: crucecitas de púas a lo largo, tamaño fijo en pantalla
+    const bs = Math.max(26 / k, 0.8), f = Math.max(0.6, Math.min(1, k / 2.5)).toFixed(3);
+    net.wires.forEach(w => {
+      if (!isBarb(w)) return; const L = SOL.len[w.id];
+      for (let s = bs / 2, n = 0; s < L && n < 600; s += bs, n++) {
+        const q = pointAt(w.pts, s); if (!inV(q[0], q[1])) continue;
+        const g = S(q[0], q[1], g0, null, true); g.setAttribute('transform', g.getAttribute('transform') + ` rotate(${(q[2] * 180 / Math.PI).toFixed(1)}) scale(${f})`);
+        el('path', {d: 'M-3 -3.5 3 3.5M3 -3.5 -3 3.5', stroke: '#140f08', 'stroke-width': 3.6, 'stroke-linecap': 'round'}, g);
+        el('path', {d: 'M-3 -3.5 3 3.5M3 -3.5 -3 3.5', stroke: BARB_COL, 'stroke-width': 1.8, 'stroke-linecap': 'round'}, g);
+      }
+    });
+  }
+  if (filtering()) {   // filtro activo: aro amarillo debajo de lo que sí se ve, para encontrarlo rápido
+    const hl = [];
+    if (V('energizer')) net.energizers.forEach(e => hl.push([e.x, e.y]));
+    net.parts.forEach(p => { if (qHidden(p) || !V(partKey(p))) return; const q = partPos(p); hl.push(p.type === 'note' ? [q[0], q[1] - 14 * symF() / k] : [q[0], q[1]]); });
+    net.wires.forEach(w => { if (w.kind === 'cable' && cabV(w)) hl.push(cableArc(w)[6]); });
+    if (V('end')) autoEnds().forEach(w => hl.push(endPt(w)));
+    hl.forEach(q => { if (!inV(q[0], q[1])) return; const g = S(q[0], q[1], g0, null, true);
+      el('circle', {r: 17, fill: 'rgba(255,228,92,.22)', stroke: '#FFE45C', 'stroke-width': 3}, g);
+      el('circle', {r: 17, fill: 'none', stroke: '#FFE45C', 'stroke-width': 2, class: 'pulse', style: 'transform-box:fill-box;transform-origin:center'}, g); });
+  }
+  net.parts.forEach(p => {   // puertas: la cinta de un alambre al otro
+    if (!isGate2(p) || !V('gate')) return;
+    const A = anchorPos(p.a), B = anchorPos(p.b); if (!A || !B) return;
+    const isSel = sel && sel.t === 'p' && sel.id === p.id;
+    if (isSel) el('line', Object.assign({x1: A[0], y1: A[1], x2: B[0], y2: B[1], stroke: '#FFC93C', 'stroke-opacity': .5, 'stroke-width': 16, 'stroke-linecap': 'round'}, NSS), g0);
+    el('line', Object.assign({x1: A[0], y1: A[1], x2: B[0], y2: B[1], stroke: '#fff', 'stroke-width': Math.max(2.5, 8 * symF()), 'stroke-linecap': 'butt'}, NSS), g0);
+    el('line', Object.assign({x1: A[0], y1: A[1], x2: B[0], y2: B[1], stroke: '#1F6FE5', 'stroke-width': Math.max(1.6, 5 * symF()), 'stroke-linecap': 'butt'}, NSS), g0);
+  });
+  const endsLater = [];   // los fines de línea se dibujan al final: van encima de puertas, switches y cables
+  if (V('end')) autoEnds().forEach(w => {   // fin de línea automático (donde se acaba el alambre)
+    const e = endMark(w); if (!inV(e[0], e[1])) return;
+    endsLater.push(() => { const g = S(e[0], e[1], g0);
+      if (sel && sel.t === 'a' && sel.id === w.id) el('circle', {r: 15, fill: 'none', stroke: '#FFC93C', 'stroke-width': 3}, g);
+      el('circle', {r: END_R, fill: '#0b0b0b'}, g); });   // todos los fines de línea se ven igual (si toca otro alambre, va pegado al cruce)
+  });
+  if (mode === 'gate' && ctx.a) { const A = anchorPos(ctx.a); if (A) { const g = S(A[0], A[1], g0, null, true); el('circle', {r: 7, fill: '#3D8BFF', stroke: '#fff', 'stroke-width': 2}, g); if (AIM && AIM.pt) el('line', Object.assign({x1: A[0], y1: A[1], x2: AIM.pt[0], y2: AIM.pt[1], stroke: '#3D8BFF', 'stroke-width': 4, 'stroke-dasharray': '7 6', 'stroke-linecap': 'round'}, NSS), g0); } }
+  const qCur = mode === 'ask' ? ctx.list[ctx.i] : null;
+  net.parts.forEach(p => {
+    if (qHidden(p) || !V(partKey(p))) return;
+    const [x, y, ang] = partPos(p); if (!inV(x, y)) return;
+    const isSel = (sel && sel.t === 'p' && sel.id === p.id) || (mode === 'move' && ctx.t === 'p' && ctx.id === p.id) || qCur === p.id;
+    const g = S(x, y, g0);
+    if (isSel) { el('circle', {r: 19, fill: 'none', stroke: '#FFC93C', 'stroke-width': 3}, g); el('circle', {r: 19, fill: 'none', stroke: '#FFC93C', 'stroke-width': 2, class: 'pulse', style: 'transform-box:fill-box;transform-origin:center'}, g); }
+    if (p.type === 'switch') {
+      const gg = el('g', {transform: `rotate(${(ang * 180 / Math.PI).toFixed(1)})`}, g);
+      el('rect', {x: -10, y: -6.5, width: 20, height: 13, rx: 3.5, fill: p.open ? '#2a0f0d' : '#E5352B', stroke: p.open ? '#FF5147' : '#fff', 'stroke-width': 1.6}, gg);
+      el('path', p.open ? {d: 'M-6 2 L5 -6', stroke: '#FF5147', 'stroke-width': 2.4, 'stroke-linecap': 'round'} : {d: 'M-6 0 H6', stroke: '#fff', 'stroke-width': 2.4, 'stroke-linecap': 'round'}, gg);
+    } else if (p.type === 'end') {   // fin de línea puesto a mano: se ve igual que el automático
+      const w = W(p.on), touch = w && w.kind !== 'cable' && net.wires.some(o => o.id !== w.id && o.kind !== 'cable' && !isBarb(o) && project([x, y], o.pts).d < 1.5);
+      endsLater.push(() => { const g2 = S(x, y, g0);
+        if (touch) {   // muere pegado a otro alambre: punto del lado de donde viene la corriente, con la orilla tocando el cruce
+          const off = 4.8 + 1.5 / symF(), dir = p.s * k / symF() > off + 1 ? -1 : 1;
+          el('circle', {cx: (dir * Math.cos(ang) * off).toFixed(2), cy: (dir * Math.sin(ang) * off).toFixed(2), r: END_R, fill: '#0b0b0b'}, g2);
+        } else el('circle', {r: END_R, fill: '#0b0b0b'}, g2); });
+    } else if (isGate2(p)) {   // manija amarilla a la mitad de la puerta
+      const gg = el('g', {transform: `rotate(${(ang * 180 / Math.PI).toFixed(1)})`}, g);
+      el('rect', {x: -12, y: -4.5, width: 24, height: 9, rx: 4.5, fill: '#1F6FE5', stroke: '#fff', 'stroke-width': 1.8}, gg);
+      el('rect', {x: -15, y: -7.5, width: 4.5, height: 15, rx: 2, fill: '#1F6FE5', stroke: '#fff', 'stroke-width': 1.6}, gg);
+      el('rect', {x: 10.5, y: -7.5, width: 4.5, height: 15, rx: 2, fill: '#1F6FE5', stroke: '#fff', 'stroke-width': 1.6}, gg);
+    } else if (p.type === 'gate') {
+      const gg = el('g', {transform: `rotate(${(ang * 180 / Math.PI + 90).toFixed(1)})`}, g);
+      el('rect', {x: -8, y: -3.2, width: 16, height: 6.4, rx: 2, fill: '#2F80ED', stroke: p.on ? '#fff' : '#cfe3ff', 'stroke-width': 1.2, 'stroke-dasharray': p.on ? null : '2 2'}, gg);
+    } else if (p.type === 'note') {
+      const answered = p.by === 'claude' && p.answer && p.answer.trim();
+      const col = p.by === 'claude' ? (answered ? '#3DBE63' : '#9B6BFF') : '#F2F2F2';
+      el('path', {d: 'M0 0 L-4 -7 H-12 a3 3 0 0 1 -3 -3 V-25 a3 3 0 0 1 3 -3 H12 a3 3 0 0 1 3 3 V-10 a3 3 0 0 1 -3 3 H4 Z', fill: col, stroke: '#111', 'stroke-width': 1.2}, g);
+      const t = el('text', {x: 0, y: -13, 'text-anchor': 'middle', style: 'font:700 11.5px system-ui', fill: '#111'}, g);
+      t.textContent = p.by === 'claude' ? (answered ? '✓' : (p.text.match(/^\?\d+/) || ['?'])[0]) : 'Nota';
+    }
+  });
+  net.wires.forEach(w => {   // cable puente: arco amarillo que brinca de un alambre a otro
+    if (w.kind !== 'cable' || !cabV(w)) return;
+    const A = w.pts[0], B = w.pts[w.pts.length - 1];
+    if (!inV(A[0], A[1]) && !inV(B[0], B[1])) return;
+    if (w.egate) {   // puerta blanca: cinta blanca de un alambre al otro, con manija; abierta = punteada y la manija suelta
+      const live = SOL.reach[w.id] > 0, isSel = sel && sel.t === 'w' && sel.id === w.id, ang = Math.atan2(B[1] - A[1], B[0] - A[0]);
+      if (isSel) el('line', Object.assign({x1: A[0], y1: A[1], x2: B[0], y2: B[1], stroke: '#FFC93C', 'stroke-opacity': .5, 'stroke-width': 16, 'stroke-linecap': 'round'}, NSS), g0);
+      el('line', Object.assign({x1: A[0], y1: A[1], x2: B[0], y2: B[1], stroke: '#0b0b0b', 'stroke-opacity': .8, 'stroke-width': Math.max(3.5, 9.5 * symF()), 'stroke-linecap': 'butt'}, NSS), g0);
+      el('line', Object.assign({x1: A[0], y1: A[1], x2: B[0], y2: B[1], stroke: w.open ? '#b9bfbb' : '#fff', 'stroke-width': Math.max(1.8, 5.5 * symF()), 'stroke-linecap': 'butt', 'stroke-dasharray': w.open ? '6 5' : null}, NSS), g0);
+      const g = S((A[0] + B[0]) / 2, (A[1] + B[1]) / 2, g0), gg = el('g', {transform: `rotate(${(ang * 180 / Math.PI).toFixed(1)})`}, g);
+      if (w.open) {   // manija suelta, colgando
+        const gh = el('g', {transform: 'rotate(-35) translate(0 -9)'}, gg);
+        el('rect', {x: -12, y: -4.5, width: 24, height: 9, rx: 4.5, fill: '#f4f4f4', stroke: '#E5352B', 'stroke-width': 1.8}, gh);
+      } else {
+        el('rect', {x: -12, y: -4.5, width: 24, height: 9, rx: 4.5, fill: '#fff', stroke: '#141414', 'stroke-width': 1.8}, gg);
+        el('rect', {x: -15, y: -7.5, width: 4.5, height: 15, rx: 2, fill: '#fff', stroke: '#141414', 'stroke-width': 1.6}, gg);
+        el('rect', {x: 10.5, y: -7.5, width: 4.5, height: 15, rx: 2, fill: '#fff', stroke: '#141414', 'stroke-width': 1.6}, gg);
+        if (live) { const ga = el('g', {transform: 'translate(0 -13)'}, gg);   // flecha: hacia dónde pasa la corriente
+          el('path', {d: 'M-3.5 -4.2 1.5 0 -3.5 4.2', fill: 'none', stroke: '#1a1300', 'stroke-width': 3.6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'}, ga);
+          el('path', {d: 'M-3.5 -4.2 1.5 0 -3.5 4.2', fill: 'none', stroke: '#FF9A3C', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'}, ga); }
+      }
+      return;
+    }
+    const dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+    const h = Math.max(L * 0.2, 7 * symF() / k), mx = (A[0] + B[0]) / 2, my = (A[1] + B[1]) / 2;
+    const cx = mx + nx * h * 2, cy = my + ny * h * 2, px = mx + nx * h, py = my + ny * h;   // punto alto del arco
+    const d = `M${A[0].toFixed(2)} ${A[1].toFixed(2)} Q${cx.toFixed(2)} ${cy.toFixed(2)} ${B[0].toFixed(2)} ${B[1].toFixed(2)}`;
+    const live = SOL.reach[w.id] >= SOL.len[w.id] - 1e-6 && SOL.reach[w.id] > 0, isSel = sel && sel.t === 'w' && sel.id === w.id;
+    if (isSel) el('path', Object.assign({d, fill: 'none', stroke: '#FFC93C', 'stroke-opacity': .45, 'stroke-width': 16, 'stroke-linecap': 'round'}, NSS), g0);
+    el('path', Object.assign({d, fill: 'none', stroke: '#1a1300', 'stroke-opacity': .8, 'stroke-width': Math.max(2.4, 5 * symF()), 'stroke-linecap': 'round'}, NSS), g0);
+    el('path', Object.assign({d, fill: 'none', stroke: live ? '#FFD23F' : '#9aa29c', 'stroke-width': Math.max(1.4, 3 * symF()), 'stroke-linecap': 'round', 'stroke-dasharray': live ? null : '6 5'}, NSS), g0);
+    [A, B].forEach(q => { const g = S(q[0], q[1], g0); el('circle', {r: 3.6, fill: live ? '#FFD23F' : '#9aa29c', stroke: '#1a1300', 'stroke-width': 1.5}, g); });   // pinzas
+    if (!live) return;   // cable sin corriente: sin flecha
+    const g = S(px, py, g0); g.setAttribute('transform', g.getAttribute('transform') + ` rotate(${(Math.atan2(dy, dx) * 180 / Math.PI).toFixed(1)})`);
+    el('path', {d: 'M-3.5 -4.2 1.5 0 -3.5 4.2', fill: 'none', stroke: '#1a1300', 'stroke-width': 3.6, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'}, g);
+    el('path', {d: 'M-3.5 -4.2 1.5 0 -3.5 4.2', fill: 'none', stroke: live ? '#FF9A3C' : '#d0d4d1', 'stroke-width': 2, 'stroke-linecap': 'round', 'stroke-linejoin': 'round'}, g);
+  });
+  endsLater.forEach(f => f());
+  net.energizers.forEach(e => {
+    if (!inV(e.x, e.y) || !V('energizer')) return;
+    const isSel = (sel && sel.t === 'e' && sel.id === e.id) || (mode === 'move' && ctx.t === 'e' && ctx.id === e.id);
+    const col = circColor(e.id), g = S(e.x, e.y, g0);
+    if (e.on !== false) el('circle', {r: 15, fill: 'none', stroke: col, 'stroke-width': 2, class: 'pulse', style: 'transform-box:fill-box;transform-origin:center'}, g);
+    el('circle', {r: 13, fill: '#141414', stroke: isSel ? '#FFC93C' : e.on === false ? '#FF5147' : col, 'stroke-width': isSel ? 3.5 : 2, 'stroke-dasharray': e.on === false && !isSel ? '4 3' : null}, g);
+    el('path', {d: 'M1.5 -8 -5 1.5 -0.5 1.5 -2 8 5 -1.5 0.5 -1.5 Z', fill: e.on !== false ? '#FFD23F' : '#777'}, g);
+  });
+  if (mode === 'shape' && mergeHint) { const g = S(mergeHint.pt[0], mergeHint.pt[1], g0, null, true); el('circle', {r: 16, fill: 'none', stroke: mergeHint.bad ? '#FF5147' : '#3DDC6E', 'stroke-width': 4}, g); }
+  // editar forma: puntos y "+" para agregar
+  if (mode === 'shape' && W(ctx.id)) {
+    const w = W(ctx.id);
+    for (let i = 1; i < w.pts.length; i++) {
+      const a = w.pts[i - 1], b = w.pts[i]; if (dist(a, b) < R(56)) continue;
+      const g = S((a[0] + b[0]) / 2, (a[1] + b[1]) / 2, g0, null, true);
+      el('circle', {r: 11, fill: 'rgba(20,20,20,.75)', stroke: '#fff', 'stroke-width': 1.5}, g);
+      el('path', {d: 'M-5 0H5M0 -5V5', stroke: '#fff', 'stroke-width': 2.2, 'stroke-linecap': 'round'}, g);
+    }
+    w.pts.forEach((q, i) => {
+      const g = S(q[0], q[1], g0, null, true), on = ctx.v === i;
+      el('circle', {r: on ? 15 : 12, fill: i === 0 ? '#FFC93C' : '#fff', stroke: on ? '#FF5147' : '#111', 'stroke-width': on ? 4 : 2}, g);
+    });
+  }
+  // mira: a qué se va a pegar
+  if (AIM_MODES.has(mode)) {
+    AIM = aimState();
+    const last = draft && draft.pts.length ? draft.pts[draft.pts.length - 1] : null;
+    if (last && (mode === 'wire' || mode === 'cable') && AIM.pt) el('line', Object.assign({x1: last[0], y1: last[1], x2: AIM.pt[0], y2: AIM.pt[1], stroke: '#FFC93C', 'stroke-width': 3, 'stroke-dasharray': '7 6', 'stroke-linecap': 'round'}, NSS), g0);
+    if (draft) draft.pts.forEach((q, i) => { const g = S(q[0], q[1], g0, null, true); el('circle', {r: 6, fill: i === 0 ? '#FFC93C' : '#fff', stroke: '#111', 'stroke-width': 1.5}, g); });
+    if (AIM.pt && AIM.snap) { const g = S(AIM.pt[0], AIM.pt[1], g0, null, true); el('circle', {r: 9, fill: 'none', stroke: AIM.ok === false ? '#FF5147' : AIM.warn ? '#FFB84D' : '#3DDC6E', 'stroke-width': 4}, g); }
+    updateAimUI();
+  }
+}
+function renderStats() {
+  const parts = net.energizers.map(e => { const c = SOL.circ[e.id]; return `<span><i style="background:${circColor(e.id)}"></i>${esc(cap(e.name.replace(/^Energizador (del )?/i, '')))} ${fmt(c.live)}${c.live < c.total - 1 ? ' de ' + fmt(c.total) : ''}</span>`; });
+  if (SOL.dead > 1) parts.push(`<span class="dead">Sin corriente ${fmt(SOL.dead)}</span>`);
+  $('stats').innerHTML = parts.join('');
+}
+
+function cableArc(w) {   // puntos del arco del cable puente (para tocarlo)
+  if (w.egate) { const A = w.pts[0], B = w.pts[w.pts.length - 1], out = []; for (let i = 0; i <= 12; i++) out.push([A[0] + (B[0] - A[0]) * i / 12, A[1] + (B[1] - A[1]) * i / 12]); return out; }
+  const A = w.pts[0], B = w.pts[w.pts.length - 1], dx = B[0] - A[0], dy = B[1] - A[1], L = Math.hypot(dx, dy) || 1, nx = -dy / L, ny = dx / L;
+  const h = Math.max(L * 0.2, 7 * symF() / view.k), cx = (A[0] + B[0]) / 2 + nx * h * 2, cy = (A[1] + B[1]) / 2 + ny * h * 2, out = [];
+  for (let i = 0; i <= 12; i++) { const t = i / 12, u = 1 - t; out.push([u * u * A[0] + 2 * u * t * cx + t * t * B[0], u * u * A[1] + 2 * u * t * cy + t * t * B[1]]); }
+  return out;
+}
+function autoEnds() {
+  return net.wires.filter(w => {
+    if (isBarb(w)) return false;   // la cerca sin corriente no lleva fin de línea
+    const e = w.pts[w.pts.length - 1];
+    if (net.wires.some(o => o !== w && o.from === w.id && dist(o.pts[0], e) < 2.5)) return false;
+    if (net.parts.some(q => q.type === 'end' && q.on === w.id && dist(partPos(q), e) < 2)) return false;   // ya tiene uno puesto a mano
+    return true;
+  });
+}
+
+/* ---------- vista: mover y acercar ---------- */
+let symIdle = 0, symRaf = 0;
+function scheduleSyms() { if (symRaf) return; symRaf = requestAnimationFrame(() => { symRaf = 0; if (SOL) renderSyms(); }); }
+const ZSTEPS = [2, 5, 10, 20, 50, 100, 200, 500, 1000];
+function updateZoomChip() {
+  const t = $('zlvlTxt'); if (!t || !(view.k > 0)) return;
+  t.textContent = 'Zoom ' + (view.k < 10 ? view.k.toFixed(1) : Math.round(view.k)) + (filtering() ? ' · Filtro activo' : '');
+  const pxPerM = view.k / net.mpp, m = ZSTEPS.find(v => v * pxPerM >= 50) || 1000;
+  $('zbar').style.width = Math.round(m * pxPerM) + 'px'; $('zbarTxt').textContent = m >= 1000 ? m / 1000 + ' km' : m + ' m';
+}
+function applyView() {
+  updateZoomChip();
+  const m = `matrix(${view.k} 0 0 ${view.k} ${view.tx} ${view.ty})`;
+  world.setAttribute('transform', m);
+  if (AIM_MODES.has(mode) && SOL) { AIM = aimState(); updateAimUI(); }
+  if (symRoot && symK === view.k && !AIM_MODES.has(mode)) { symRoot.setAttribute('transform', m); clearTimeout(symIdle); symIdle = setTimeout(scheduleSyms, 140); }
+  else scheduleSyms();
+}
+const kMin = () => { const r = svg.getBoundingClientRect(); return Math.max(0.05, Math.min(r.width / net.size[0], r.height / net.size[1]) * 0.6); };
+let needFit = false, fitT = 0;
+function fit() {   // encuadra el cerco (no toda la foto)
+  const r = svg.getBoundingClientRect();
+  if (r.width < 80 || r.height < 80) { needFit = true; clearTimeout(fitT); fitT = setTimeout(() => { if (needFit) { fit(); if (!needFit && SOL) render(); } }, 250); return; }
+  needFit = false; let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+  net.wires.forEach(w => w.pts.forEach(([x, y]) => { x0 = Math.min(x0, x); y0 = Math.min(y0, y); x1 = Math.max(x1, x); y1 = Math.max(y1, y); }));
+  if (x0 > x1) { x0 = 0; y0 = 0; [x1, y1] = net.size; }
+  const pad = 16, k = Math.max(0.05, Math.min((r.width - 2 * pad) / Math.max(1, x1 - x0), (r.height - 2 * pad) / Math.max(1, y1 - y0)));
+  view = {k, tx: r.width / 2 - (x0 + x1) / 2 * k, ty: r.height / 2 - (y0 + y1) / 2 * k}; applyView();
+}
+function zoomAt(sx, sy, f) {
+  const k = Math.max(kMin(), Math.min(14, view.k * f)), f2 = k / view.k;
+  view.tx = sx - (sx - view.tx) * f2; view.ty = sy - (sy - view.ty) * f2; view.k = k; applyView();
+}
+const toWorld = (sx, sy) => [(sx - view.tx) / view.k, (sy - view.ty) / view.k];
+function center() { const r = svg.getBoundingClientRect(); return [r.width / 2, r.height / 2]; }
+const MOUSE = matchMedia('(hover: hover) and (pointer: fine)').matches;
+const WIDE = () => matchMedia('(min-width: 900px)').matches;
+const TAP = MOUSE ? 'Haz clic en' : 'Toca';
+let hover = null;   // posición del mouse sobre el mapa
+const aimWorld = () => MOUSE && hover ? toWorld(hover.x, hover.y) : toWorld(...center());
+let anim = 0;
+function flyTo(x, y, k) {
+  cancelAnimationFrame(anim);
+  const [cx, cy] = center(), k1 = k || view.k, from = Object.assign({}, view), to = {k: k1, tx: cx - x * k1, ty: cy - y * k1};
+  if (matchMedia('(prefers-reduced-motion: reduce)').matches) { view = to; applyView(); return; }
+  const t0 = performance.now();
+  const stepF = t => { const u = Math.min(1, (t - t0) / 260), e = 1 - Math.pow(1 - u, 3);
+    view = {k: from.k + (to.k - from.k) * e, tx: from.tx + (to.tx - from.tx) * e, ty: from.ty + (to.ty - from.ty) * e}; applyView();
+    if (u < 1) anim = requestAnimationFrame(stepF); };
+  anim = requestAnimationFrame(stepF);
+}
+// si el panel de abajo cambia de alto, el centro del mapa no se mueve
+let lastSize = null;
+new ResizeObserver(() => { const r = svg.getBoundingClientRect(); if (needFit) { fit(); lastSize = [r.width, r.height]; return; } if (lastSize) { view.tx += (r.width - lastSize[0]) / 2; view.ty += (r.height - lastSize[1]) / 2; applyView(); } lastSize = [r.width, r.height]; }).observe(svg);
+
+const ptrs = new Map(); let gest = null;
+svg.addEventListener('pointerdown', ev => {
+  svg.setPointerCapture(ev.pointerId); cancelAnimationFrame(anim);
+  const r = svg.getBoundingClientRect(), p = {x: ev.clientX - r.left, y: ev.clientY - r.top};
+  ptrs.set(ev.pointerId, p);
+  if (ptrs.size === 1) {
+    gest = {type: 'one', x0: p.x, y0: p.y, tx: view.tx, ty: view.ty, moved: false, vtx: null};
+    if (mode === 'shape') { const v = nearestHandle(toWorld(p.x, p.y)); if (v != null) gest.vtx = v; }
+  } else if (ptrs.size === 2) {
+    const [a, b] = [...ptrs.values()];
+    gest = {type: 'pinch', d0: Math.hypot(a.x - b.x, a.y - b.y) || 1, m0: {x: (a.x + b.x) / 2, y: (a.y + b.y) / 2}, v0: Object.assign({}, view)};
+  }
+});
+let hoverRaf = 0;
+svg.addEventListener('pointermove', ev => {
+  if (ev.pointerType === 'mouse') {
+    const r0 = svg.getBoundingClientRect(); hover = {x: ev.clientX - r0.left, y: ev.clientY - r0.top};
+    if (!hoverRaf) hoverRaf = requestAnimationFrame(() => { hoverRaf = 0; onHover(); });
+  }
+  if (!ptrs.has(ev.pointerId) || !gest) return;
+  const r = svg.getBoundingClientRect(), p = {x: ev.clientX - r.left, y: ev.clientY - r.top};
+  ptrs.set(ev.pointerId, p);
+  if (gest.type === 'pinch' && ptrs.size >= 2) {
+    const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y), m = {x: (a.x + b.x) / 2, y: (a.y + b.y) / 2};
+    const k = Math.max(kMin(), Math.min(14, (gest.v0.k * d / gest.d0) || gest.v0.k));
+    const wx = (gest.m0.x - gest.v0.tx) / gest.v0.k, wy = (gest.m0.y - gest.v0.ty) / gest.v0.k;
+    view = {k, tx: m.x - wx * k, ty: m.y - wy * k}; applyView(); return;
+  }
+  if (gest.type !== 'one') return;
+  const dx = p.x - gest.x0, dy = p.y - gest.y0;
+  if (!gest.moved && Math.hypot(dx, dy) > 8) { gest.moved = true; if (gest.vtx != null) { beginChange(); ctx.v = gest.vtx; } }
+  if (!gest.moved) return;
+  if (gest.vtx != null) { const w = W(ctx.id), pt = toWorld(p.x, p.y); gest.merge = mergeTarget(ctx.id, gest.vtx, pt); w.pts[gest.vtx] = gest.merge ? gest.merge.pt.slice() : pt; mergeHint = gest.merge; render(); }
+  else { view.tx = gest.tx + dx; view.ty = gest.ty + dy; applyView(); }
+});
+function endPtr(ev) {
+  if (!ptrs.has(ev.pointerId)) return;
+  const p = ptrs.get(ev.pointerId); ptrs.delete(ev.pointerId);
+  if (!gest) return;
+  if (gest.type === 'pinch') { if (ptrs.size === 0) gest = null; else { const q = [...ptrs.values()][0]; gest = {type: 'one', x0: q.x, y0: q.y, tx: view.tx, ty: view.ty, moved: true, vtx: null}; } return; }
+  if (!gest.moved && ev.type === 'pointerup') onTap(toWorld(p.x, p.y), gest.vtx);
+  else if (gest.vtx != null) {
+    // la punta ya quedó donde la soltaste; si cae sobre otra cosa, se pregunta antes de unir o conectar
+    const m = gest.merge, id = ctx.id, w = W(id); mergeHint = null;
+    let ask = null;
+    if (m && m.bad) snack(m.msg);
+    else if (m && m.feed) ask = feedPlan(m);
+    else if (m) { const other = W(m.A === id ? m.B : m.A);
+      ask = {title: `¿Conectar con «${other.name}»?`, text: 'La punta quedó sobre la punta de otro alambre. Si dices que sí, la corriente pasa de uno al otro (siguen siendo dos alambres). Si dices que no, quedan separados.',
+        yes: 'Sí, conectarlos', no: 'No, dejarlos separados', fn: () => doConnect(m), done: connectMsg(m)}; }
+    else if (gest.vtx === 0 && w && !isBarb(w)) {
+      const src = snapSource(w.pts[0], descendants(id));
+      if (src && src.from === w.from) w.pts[0] = src.pt.slice();   // sigue pegado a lo mismo: solo se acomoda
+      else if (src) ask = {title: `¿Conectar ${EN(src.from) ? 'al energizador' : 'con'} «${src.label}»?`, text: `El inicio de «${w.name}» quedó sobre ${EN(src.from) ? 'un energizador' : 'otro alambre'}. Si dices que sí, de ahí le llega la corriente. Si dices que no, quedan sin conectar.`,
+        yes: 'Sí, conectar', no: 'No, sin conectar', fn: () => { w.from = src.from; w.pts[0] = src.pt.slice(); }, done: 'Conectado: ahora le llega de ' + src.label,
+        noFn: () => { if (w.from && isFar(w)) w.from = null; }};   // dijo que no: queda sin conectar (y ya no se conecta solo)
+    }
+    REPARENT_SKIP = gest.vtx === 0 ? id : null; endChange(); REPARENT_SKIP = null; render(); renderDock();
+    if (ask) askYesNo(ask);
+  }
+  gest = null;
+}
+svg.addEventListener('pointerup', endPtr); svg.addEventListener('pointercancel', endPtr);
+svg.addEventListener('pointerleave', () => { hover = null; $('tip').hidden = true; $('wrap').classList.remove('hovering'); if (AIM_MODES.has(mode)) { AIM = aimState(); updateAimUI(); scheduleSyms(); } });
+svg.addEventListener('dblclick', ev => { ev.preventDefault(); if (mode === 'wire' && draft && !$('finish')?.disabled) finishWire(); });
+function onHover() {
+  if (!hover) return;
+  if (AIM_MODES.has(mode)) { $('tip').hidden = true; if (!gest || !gest.moved) { AIM = aimState(); updateAimUI(); scheduleSyms(); } return; }
+  if (gest && gest.moved) { $('tip').hidden = true; return; }
+  const c = mode === 'shape' || mode === 'ask' ? [] : candidates(toWorld(hover.x, hover.y));
+  const tip = $('tip');
+  $('wrap').classList.toggle('hovering', c.length > 0 || (mode === 'shape' && nearestHandle(toWorld(hover.x, hover.y)) != null));
+  if (!c.length) { tip.hidden = true; return; }
+  const it = c[0]; let sub = kindLabel(it);
+  if (it.t === 'p' && PT(it.id).type === 'switch') sub += PT(it.id).open ? ' · abierto' : ' · cerrado';
+  if (it.t === 'w') sub += SOL.reach[it.id] > 0 ? ' · con corriente' : ' · sin corriente';
+  tip.innerHTML = `${esc(labelOf(it))}<small>${esc(sub)}${c.length > 1 ? ' · y ' + (c.length - 1) + ' más' : ''}</small>`;
+  tip.style.left = hover.x + 'px'; tip.style.top = hover.y + 'px'; tip.hidden = false;
+}
+// teclado: Esc cancela, Ctrl+Z deshace, Ctrl+Y rehace, Enter termina el alambre
+document.addEventListener('keydown', e => {
+  const typing = /^(INPUT|TEXTAREA)$/.test(document.activeElement && document.activeElement.tagName);
+  if ((e.ctrlKey || e.metaKey) && !typing && e.key.toLowerCase() === 'z') { e.preventDefault(); e.shiftKey ? redo() : undo(); return; }
+  if ((e.ctrlKey || e.metaKey) && !typing && e.key.toLowerCase() === 'y') { e.preventDefault(); redo(); return; }
+  if (e.key === 'Escape' && popKind) { closePop(); return; }
+  if (e.key === 'Escape' && modal.hidden && menu.hidden) { const x = $('dx') || $('cancel') || $('done'); if (x) x.click(); return; }
+  if (e.key === 'Delete' && !typing && mode === 'select' && sel && exists(sel) && modal.hidden) { e.preventDefault(); removeThing(sel.t === 'a' ? {t: 'w', id: sel.id} : sel); return; }   // tecla Supr borra lo seleccionado (se puede deshacer)
+  if (e.key === 'Enter' && !typing && mode === 'wire' && $('finish') && !$('finish').disabled) { e.preventDefault(); finishWire(); }
+});
+svg.addEventListener('wheel', ev => { ev.preventDefault(); const r = svg.getBoundingClientRect(); zoomAt(ev.clientX - r.left, ev.clientY - r.top, Math.exp(-ev.deltaY * 0.0015)); }, {passive: false});
+$('zin').onclick = () => zoomAt(...center(), 1.7);
+$('zout').onclick = () => zoomAt(...center(), 1 / 1.7);
+$('zfit').onclick = fit;
+document.addEventListener('gesturestart', e => e.preventDefault());
+
+/* ---------- buscar cosas cerca ---------- */
+function nearestWire(p, r, opts) {
+  let best = null;
+  net.wires.forEach(w => { if (opts && opts.noCable && w.kind === 'cable') return; if (isBarb(w) && ((opts && opts.noBarb) || !V('barb'))) return; if (opts && opts.exclude && opts.exclude.has(w.id)) return;
+    const q = project(p, w.pts); if (q.d <= r && (!best || q.d < best.q.d)) best = {w, q}; });
+  return best;
+}
+function nearestVertex(p, r, exclude) {
+  let best = null;
+  net.wires.forEach(w => { if (exclude && exclude.has(w.id)) return; w.pts.forEach(q => { const d = dist(p, q); if (d <= r && (!best || d < best.d)) best = {d, q, w}; }); });
+  return best;
+}
+function nearestHandle(p) {
+  const w = W(ctx.id); if (!w) return null; let best = null;
+  w.pts.forEach((q, i) => { const d = dist(p, q); if (d <= R(26) && (!best || d < best.d)) best = {d, i}; });
+  return best ? best.i : null;
+}
+function candidates(p) {
+  const r = R(28), out = [];
+  if (V('energizer')) net.energizers.forEach(e => { const d = dist(p, [e.x, e.y]); if (d <= r) out.push({t: 'e', id: e.id, d}); });
+  net.parts.forEach(q => { if (!isGate2(q) || !V('gate')) return; const A = anchorPos(q.a), B = anchorPos(q.b); if (!A || !B) return; const d = project(p, [A, B]).d; if (d <= R(14)) out.push({t: 'p', id: q.id, d}); });
+  net.parts.forEach(q => { if (isGate2(q) || qHidden(q) || !V(partKey(q))) return; const pos = partPos(q); const at = q.type === 'note' ? [pos[0], pos[1] - 14 * symF() / view.k] : pos; const d = dist(p, at); if (d <= r) out.push({t: 'p', id: q.id, d}); });
+  if (!out.length && V('end')) autoEnds().forEach(w => { const e = endPt(w), d = dist(p, e); if (d <= R(20)) out.push({t: 'a', id: w.id, d}); });
+  // los alambres siempre cuentan, aunque haya una puerta o un switch cerca; solo ceden cuando el clic cae justo encima de esa cosa
+  const pen = out.length ? R(12) : 0;
+  net.wires.forEach(w => { if ((w.kind === 'cable' && !cabV(w)) || (isBarb(w) && !V('barb'))) return; const q = project(p, w.kind === 'cable' ? cableArc(w) : w.pts); if (q.d <= R(18)) out.push({t: 'w', id: w.id, d: q.d + pen}); });
+  return out.sort((a, b) => a.d - b.d);
+}
+function descendants(id) { const s = new Set([id]); let grew = true; while (grew) { grew = false; net.wires.forEach(w => { if (w.from && s.has(w.from) && !s.has(w.id)) { s.add(w.id); grew = true; } }); } return s; }
+function snapSource(p, exclude) {
+  let be = null; net.energizers.forEach(e => { const d = dist(p, [e.x, e.y]); if (d <= R(30) && (!be || d < be.d)) be = {d, e}; });
+  if (be) return {from: be.e.id, pt: [be.e.x, be.e.y], label: be.e.name};
+  const nw = nearestWire(p, R(26), {exclude, noBarb: true});
+  if (nw) { let pt = [nw.q.x, nw.q.y]; nw.w.pts.forEach(q => { if (dist(q, p) < R(14)) pt = q.slice(); }); return {from: nw.w.id, pt, label: nw.w.name}; }
+  return null;
+}
+
+/* ---------- la mira ---------- */
+const AIM_MODES = new Set(['place', 'wire', 'cable', 'move', 'from', 'gate', 'cut']);
+const CUT_GAP = 4;   // espacio vacío al cortar (unidades del mapa, ~7 m)
+function aimState() {
+  if (MOUSE && !hover) return {ok: true, pt: null, msg: ''};
+  const p = aimWorld();
+  if (mode === 'place' || mode === 'move') {
+    const type = mode === 'place' ? ctx.type : ctx.t === 'e' ? 'energizer' : PT(ctx.id).type;
+    if (type === 'switch' || type === 'gate' || type === 'end') {
+      const nw = nearestLine(p, R(32), type === 'switch', type === 'gate');
+      if (nw) return {ok: true, snap: true, pt: [nw.q.x, nw.q.y], w: nw.w.id, s: nw.q.s, msg: `Sobre «${nw.w.name}»`};
+      return type === 'gate' ? {ok: true, warn: true, pt: p, msg: 'No está sobre un alambre: quedará solo como marca'} : {ok: false, pt: p, msg: 'Acerca la mira a un alambre'};
+    }
+    return {ok: true, pt: p, msg: type === 'energizer' ? 'Pon la mira donde está el energizador' : 'Pon la mira donde va la nota'};
+  }
+  if (mode === 'from') {
+    const s = snapSource(p, descendants(ctx.id));
+    return s ? {ok: true, snap: true, pt: s.pt, from: s.from, msg: `Le llega de «${s.label}»`} : {ok: false, pt: p, msg: 'Acerca la mira a un energizador o un alambre'};
+  }
+  if (mode === 'gate') {
+    const nw = nearestWire(p, R(30), {noCable: true, exclude: ctx.a ? new Set() : null});
+    if (!nw) return {ok: false, pt: p, msg: ctx.a ? 'Acerca el mouse al alambre del otro lado' : 'Acerca el mouse a un alambre'};
+    let pt = [nw.q.x, nw.q.y], s = nw.q.s; const L = plen(nw.w.pts);
+    if (s < R(18)) { pt = nw.w.pts[0].slice(); s = 0; } else if (L - s < R(18)) { pt = nw.w.pts[nw.w.pts.length - 1].slice(); s = L; }   // se pega a la punta
+    if (ctx.a && ctx.a.on === nw.w.id && Math.abs(ctx.a.s - s) < R(6)) return {ok: false, pt, msg: 'Elige el alambre del otro lado de la puerta'};
+    return {ok: true, snap: true, pt, w: nw.w.id, s, msg: `${ctx.a ? 'Termina en' : 'Empieza en'} «${nw.w.name}»`};
+  }
+  if (mode === 'cut') {
+    const w = W(ctx.id); if (!w) return {ok: false, pt: p, msg: ''};
+    const q = project(p, w.pts), L = plen(w.pts);
+    if (q.d > R(30)) return {ok: false, pt: p, msg: `Acerca el mouse a «${w.name}»`};
+    if (q.s < CUT_GAP * 1.5 || L - q.s < CUT_GAP * 1.5) return {ok: false, snap: true, pt: [q.x, q.y], msg: 'Muy cerca de la punta: corta más adentro'};
+    return {ok: true, snap: true, pt: [q.x, q.y], s: q.s, msg: `Corta aquí «${w.name}»`};
+  }
+  if ((mode === 'wire' || mode === 'cable') && !draft) return {ok: false, pt: p, msg: ''};
+  if (mode === 'wire' || mode === 'cable') {
+    if (!draft.pts.length && draft.kind === 'barb') { const v = nearestVertex(p, R(16)); return v ? {ok: true, snap: true, pt: v.q.slice(), from: null, msg: `Empieza junto a «${v.w.name}»`} : {ok: true, pt: p, from: null, msg: 'Empieza aquí'}; }
+    if (!draft.pts.length) {
+      const s = snapSource(p);
+      if (mode === 'cable') return s ? {ok: true, snap: true, pt: s.pt, from: s.from, msg: EN(s.from) ? `Sale del energizador «${s.label}»` : `Del lado de «${s.label}»`} : {ok: false, pt: p, msg: 'Acerca la mira a un alambre o a un energizador'};
+      return s ? {ok: true, snap: true, pt: s.pt, from: s.from, msg: `La corriente sale de «${s.label}»`} : {ok: true, warn: true, pt: p, from: null, msg: 'Aquí no hay energizador ni alambre: quedará sin corriente'};
+    }
+    if (mode === 'cable') {
+      const t = cableTarget(p);
+      if (!t) return {ok: true, warn: true, pt: p, msg: 'Aquí no hay alambre: después dibujas el que sigue'};
+      return t.bad ? {ok: false, snap: true, pt: t.pt, msg: t.msg} : {ok: true, snap: true, pt: t.pt, target: t, msg: t.msg};
+    }
+    const v = nearestVertex(p, R(16));
+    if (v) return {ok: true, snap: true, pt: v.q.slice(), msg: `Se junta con «${v.w.name}»`};
+    const nw = nearestWire(p, R(12));
+    if (nw) return {ok: true, snap: true, pt: [nw.q.x, nw.q.y], msg: `Llega hasta «${nw.w.name}»`};
+    const L = plen(draft.pts.concat([p]));
+    return {ok: true, pt: p, msg: `Largo: ${fmt(M(L))}`};
+  }
+  return {ok: true, pt: p, msg: ''};
+}
+function updateAimUI() {
+  const fb = $('aimfb'); if (!fb || !AIM) return;
+  fb.textContent = AIM.msg || (MOUSE ? 'Pasa el mouse por el mapa' : 'Mueve el mapa con el dedo');
+  fb.className = 'fb ' + (AIM.ok === false ? 'bad' : AIM.warn ? 'warn' : AIM.msg ? 'ok' : '');
+  const b = $('aimok'); if (b) b.disabled = AIM.ok === false;
+}
+
+/* ---------- historial y guardado ---------- */
+let pending = null;
+function beginChange() { pending = JSON.stringify(net); }
+function endChange() { if (pending && reparentOrphans()) render(); if (pending && pending !== JSON.stringify(net)) { undoSt.push(pending); if (undoSt.length > 80) undoSt.shift(); redoSt = []; queueSave(); } pending = null; renderUndo(); }
+function change(fn) { beginChange(); fn(); render(); endChange(); }
+function renderUndo() { $('undo').disabled = !undoSt.length; }
+function undo() { if (!undoSt.length) return; redoSt.push(JSON.stringify(net)); net = JSON.parse(undoSt.pop()); afterHistory(); snack('Listo, se deshizo el último cambio'); }
+function redo() { if (!redoSt.length) return; undoSt.push(JSON.stringify(net)); net = JSON.parse(redoSt.pop()); afterHistory(); snack('Se rehízo el cambio'); }
+function afterHistory() { if (sel && !exists(sel)) { sel = null; if (mode === 'select') mode = 'idle'; } if (['shape', 'from', 'move'].includes(mode) && !W(ctx.id) && !PT(ctx.id) && !EN(ctx.id)) mode = 'idle'; render(); renderDock(); queueSave(); }
+const exists = s => ((s.t === 'w' || s.t === 'a') && W(s.id)) || (s.t === 'p' && PT(s.id)) || (s.t === 'e' && EN(s.id));
+$('undo').onclick = undo;
+
+let docRef = null, saveTimer = 0, saving = false, saveAgain = false;
+const CHECK = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
+function setSave(txt, cls) { const s = $('save'); s.innerHTML = (cls === 'ok' ? CHECK : '') + esc(txt); s.className = 'save' + (cls ? ' ' + cls : ''); }
+function lsWrite() { try { localStorage.setItem(LS_KEY, JSON.stringify({net, savedAt: Date.now()})); } catch (e) {} }
+function queueSave() {
+  lsWrite(); clearTimeout(saveTimer);
+  if (!docRef) { setSave('Guardado en el teléfono', 'warn'); return; }
+  setSave('Guardando…'); saveTimer = setTimeout(doSave, 1000);
+}
+async function doSave() {
+  if (!docRef) return;
+  if (saving) { saveAgain = true; return; }
+  saving = true; setSave('Guardando…');
+  const slow = setTimeout(() => setSave('Guardando… (lento)', 'warn'), 8000);
+  try { await docRef.set({net, savedAt: Date.now()}); setSave('Guardado', 'ok'); }
+  catch (e) { setSave(e && e.code === 'invalid_argument' ? 'Sin permiso para guardar' : 'Guardado solo en el teléfono', 'warn'); }
+  finally { clearTimeout(slow); saving = false; if (saveAgain) { saveAgain = false; doSave(); } }
+}
+
+/* ---------- avisos ---------- */
+let snackT = 0;
+function snack(txt, undoable) {
+  $('snackTxt').textContent = txt; $('snack').hidden = false;
+  const b = $('snackBtn'); b.hidden = !undoable; b.onclick = () => { $('snack').hidden = true; undo(); };
+  clearTimeout(snackT); snackT = setTimeout(() => $('snack').hidden = true, undoable ? 6000 : 3000);
+}
+function buzz() { try { navigator.vibrate && navigator.vibrate(12); } catch (e) {} }
+
+/* ---------- iconos ---------- */
+const IC = {
+  wire: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 19 9 9l6 6 6-10"/><circle cx="3" cy="19" r="1.8" fill="currentColor"/><circle cx="9" cy="9" r="1.8" fill="currentColor"/><circle cx="15" cy="15" r="1.8" fill="currentColor"/></svg>',
+  barb: '<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M2 12h20" stroke="#B98A5B" stroke-width="2"/><path d="M5 9l3 6M8 9l-3 6M10.5 9l3 6M13.5 9l-3 6M16 9l3 6M19 9l-3 6" stroke="#B98A5B" stroke-width="1.7"/></svg>',
+  cable: '<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M1 19h5M18 19h5" stroke="currentColor" stroke-width="2"/><path d="M6 19C6 6 18 6 18 19" stroke="#E0A800" stroke-width="2.6"/><circle cx="6" cy="19" r="2" fill="#E0A800"/><circle cx="18" cy="19" r="2" fill="#E0A800"/></svg>',
+  switch: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><rect x="3" y="7.5" width="18" height="10" rx="3" stroke="#E5352B"/><path d="M7 14.5l9-5" stroke="#E5352B"/></svg>',
+  gate: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M2 12h6M16 12h6" stroke="currentColor"/><rect x="8" y="8.5" width="8" height="7" rx="1.5" stroke="#2F80ED"/></svg>',
+  egate: '<svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M2 12h20" stroke="currentColor"/><rect x="7" y="8.5" width="10" height="7" rx="3.5" fill="#fff" stroke="#555"/></svg>',
+  energizer: '<svg viewBox="0 0 24 24" fill="none" stroke="#E0A800" stroke-width="2" stroke-linejoin="round"><path d="M13 2 5 13h6l-1 9 8-12h-6z"/></svg>',
+  note: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M4 5h16v11h-8l-4 4v-4H4z"/></svg>',
+  ask: '<svg viewBox="0 0 24 24" fill="none" stroke="#7442D8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h16v11h-8l-4 4v-4H4z"/><path d="M10 9a2 2 0 1 1 3 1.7c-.6.4-1 .8-1 1.5"/><circle cx="12" cy="14.3" r=".6" fill="#7442D8"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  x: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"><path d="M6 6l12 12M18 6 6 18"/></svg>',
+  move: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v18M3 12h18M9 6l3-3 3 3M9 18l3 3 3-3M6 9l-3 3 3 3M18 9l3 3-3 3"/></svg>',
+  shape: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 18 10 7l8 9"/><circle cx="4" cy="18" r="2"/><circle cx="10" cy="7" r="2"/><circle cx="18" cy="16" r="2"/></svg>',
+  extend: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 17h9"/><path d="M12 17h9" stroke-dasharray="2 3"/><path d="M18 14l3 3-3 3"/></svg>',
+  from: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2 7 11h4l-1 6"/><path d="M10 17h11M18 14l3 3-3 3"/></svg>',
+  flip: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 8h14l-3-3M20 16H6l3 3"/></svg>',
+  rename: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20h4L19 9l-4-4L4 16z"/></svg>',
+  trash: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M10 7V4h4v3M6 7l1 13h10l1-13"/></svg>',
+  power: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 3v8M7 6a8 8 0 1 0 10 0"/></svg>',
+  end: '<svg viewBox="0 0 24 24" fill="none" stroke-linecap="round"><path d="M2 12h12" stroke="currentColor" stroke-width="2"/><circle cx="17" cy="12" r="4.5" fill="#111" stroke="currentColor" stroke-width="1.8"/></svg>',
+  cut: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="7" r="3"/><circle cx="6" cy="17" r="3"/><path d="M8.5 8.5 20 18M8.5 15.5 20 6"/></svg>',
+  flow: '<svg viewBox="0 0 24 24" fill="none" stroke="#E07A1F" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12h20" stroke="currentColor" stroke-width="1.6"/><path d="M6 7l5 5-5 5M14 7l5 5-5 5"/></svg>',
+  chev: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="width:18px;height:18px"><path d="m9 6 6 6-6 6"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12 5 5 9-10"/></svg>',
+  help: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.6.3-1 .8-1 1.5"/><circle cx="12" cy="16.5" r=".7" fill="currentColor"/></svg>',
+  eye: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V4H4v12h4"/></svg>',
+  redo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m15 14 5-5-5-5"/><path d="M20 9H10a6 6 0 0 0 0 12h3"/></svg>',
+  reset: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 3-6.7L3 8"/><path d="M3 3v5h5"/></svg>',
+  fit: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg>'
+};
+const KIND = {
+  switch: {ic: 'switch', name: 'Switch', desc: 'Corta la corriente de lo que sigue'},
+  gate: {ic: 'gate', name: 'Puerta', desc: 'Va de un alambre a otro (manija)'},
+  egate: {ic: 'egate', name: 'Puerta con corriente', desc: 'Como un switch en puerta: cerrada pasa la corriente'},
+  cable: {ic: 'cable', name: 'Cable puente', desc: 'Pasa la corriente de un alambre a otro'},
+  barb: {ic: 'barb', name: 'Cerca sin corriente', desc: 'Púas u otro alambre, sin corriente'},
+  wire: {ic: 'wire', name: 'Alambre', desc: 'Un tramo nuevo de cerca eléctrica'},
+  energizer: {ic: 'energizer', name: 'Energizador', desc: 'De donde sale la corriente'},
+  note: {ic: 'note', name: 'Nota para Claude', desc: 'Para explicarme algo en el mapa'},
+  end: {ic: 'end', name: 'Fin de línea', desc: 'Aquí termina la corriente (punto negro)'}
+};
+
+/* ---------- panel de abajo ---------- */
+const dock = $('dock');
+function H(html) {
+  dock.innerHTML = html;
+  // si hay opción de borrar, también va arriba junto a la X: siempre a la vista aunque la lista no quepa
+  const del = $('a-del'), x = dock.querySelector('.dhead .x');
+  if (del && x) { const b = document.createElement('button'); b.type = 'button'; b.className = 'del'; b.title = 'Borrar (tecla Supr)'; b.innerHTML = IC.trash + '<span>Borrar</span>'; b.onclick = () => $('a-del') && $('a-del').click(); x.before(b); }
+}
+function on(id, fn) { const e = $(id); if (e) e.onclick = fn; }
+function head(ic, step, title, closeFn) {
+  return `<div class="dhead"><div class="ico">${IC[ic]}</div><div class="tt">${step ? `<span class="step">${esc(step)}</span>` : ''}<h2>${esc(title)}</h2></div>${closeFn ? `<button class="x" id="dx" type="button" aria-label="Cerrar">${IC.x}</button>` : ''}</div>`;
+}
+function li(id, ic, label, sub, danger) { return `<button class="li${danger ? ' danger' : ''}" id="${id}" type="button">${IC[ic]}<span>${esc(label)}${sub ? `<small>${esc(sub)}</small>` : ''}</span>${IC.chev}</button>`; }
+const pendingQs = () => net.parts.filter(p => p.type === 'note' && p.by === 'claude' && !(p.answer && p.answer.trim()));
+
+function setMode(m, c) {
+  mode = m; ctx = c || {};
+  $('aim').hidden = MOUSE || !AIM_MODES.has(m);
+  $('wrap').classList.toggle('aiming', AIM_MODES.has(m)); $('tip').hidden = true;
+  if (!['select'].includes(m)) sel = m === 'shape' || m === 'from' || m === 'cut' ? sel : null;
+  render(); renderDock();
+}
+function renderDock() {
+  dock.hidden = false; document.body.classList.remove('nodock');
+  $('aim').hidden = MOUSE || !AIM_MODES.has(mode);
+  if (mode === 'idle') {   // sin nada seleccionado no hay panel: el mapa ocupa toda la pantalla
+    H(''); dock.hidden = true; document.body.classList.add('nodock');
+    return;
+  }
+  if (mode === 'add') {
+    H(`${head('plus', '', '¿Qué quieres agregar?', true)}
+      <div class="grid6">${['wire', 'barb', 'switch', 'gate', 'egate', 'cable', 'end', 'energizer', 'note'].map(k => `<button class="card" type="button" data-k="${k}">${IC[KIND[k].ic]}<b>${KIND[k].name}</b><small>${KIND[k].desc}</small></button>`).join('')}</div>`);
+    on('dx', () => setMode('idle'));
+    dock.querySelectorAll('.card').forEach(b => b.onclick = () => startAdd(b.dataset.k));
+    return;
+  }
+  if (mode === 'place') {
+    const k = KIND[ctx.type];
+    H(`${head(k.ic, 'Agregar ' + k.name.toLowerCase(), MOUSE ? 'Haz clic en el mapa donde va' : 'Mueve el mapa hasta que la mira quede donde va', true)}
+      <div class="fb" id="aimfb"></div>
+      <div class="btns"><button class="b ghost" id="cancel" type="button">Cancelar</button>${MOUSE ? '' : `<button class="b pri huge" id="aimok" type="button">${IC.check}Poner aquí</button>`}</div>
+      ${MOUSE ? '<p class="lead">Con la rueda del mouse acercas y alejas. Arrastra para moverte.</p>' : ''}`);
+    on('dx', () => setMode('idle')); on('cancel', () => setMode('idle')); on('aimok', confirmPlace);
+    updateAimUI(); return;
+  }
+  if (mode === 'move') {
+    const t = ctx.t === 'e' ? 'energizer' : PT(ctx.id).type;
+    H(`${head('move', 'Mover ' + KIND[t].name.toLowerCase(), MOUSE ? 'Haz clic en el lugar nuevo' : 'Mueve el mapa hasta que la mira quede en el lugar nuevo', true)}
+      <div class="fb" id="aimfb"></div>
+      <div class="btns"><button class="b ghost" id="cancel" type="button">Cancelar</button>${MOUSE ? '' : `<button class="b pri huge" id="aimok" type="button">${IC.check}Dejar aquí</button>`}</div>`);
+    const back = () => { sel = {t: ctx.t, id: ctx.id}; setMode('select'); };
+    on('dx', back); on('cancel', back); on('aimok', confirmMove);
+    updateAimUI(); return;
+  }
+  if (mode === 'from') {
+    H(`${head('from', 'De dónde le llega la corriente', MOUSE ? 'Haz clic en el energizador o alambre que le da corriente' : 'Pon la mira en el energizador o alambre que le da corriente', true)}
+      <div class="fb" id="aimfb"></div>
+      <div class="btns"><button class="b ghost" id="cancel" type="button">Cancelar</button>${MOUSE ? '' : `<button class="b pri huge" id="aimok" type="button">${IC.check}Es de aquí</button>`}</div>`);
+    const back = () => { sel = {t: 'w', id: ctx.id}; setMode('select'); };
+    on('dx', back); on('cancel', back); on('aimok', confirmFrom);
+    updateAimUI(); return;
+  }
+  if (mode === 'wire') {
+    const n = draft.pts.length, ext = !!draft.extend, bb = draft.kind === 'barb';
+    if (!n) {
+      H(`${bb ? head('barb', 'Cerca sin corriente · paso 1 de 2', '¿Dónde empieza la cerca?', true) : head('wire', 'Alambre nuevo · paso 1 de 2', '¿De dónde sale la corriente?', true)}
+        <p class="lead">${bb ? (MOUSE ? 'Haz clic donde empieza. Es para cercas de púas u otro alambre que no lleva corriente.' : 'Pon la mira donde empieza.') : MOUSE ? 'Haz clic en el energizador o en el alambre de donde sale.' : 'Pon la mira sobre el energizador o el alambre de donde sale.'}</p>
+        <div class="fb" id="aimfb"></div>
+        <div class="btns"><button class="b ghost" id="cancel" type="button">Cancelar</button>${MOUSE ? '' : `<button class="b pri huge" id="aimok" type="button">${IC.check}Empieza aquí</button>`}</div>`);
+    } else {
+      const added = n - (draft.base || 1);
+      H(`${head(bb ? 'barb' : 'wire', ext ? (bb ? 'Alargar cerca' : 'Alargar alambre') : bb ? 'Cerca sin corriente · paso 2 de 2' : 'Alambre nuevo · paso 2 de 2', (MOUSE ? 'Haz clic en cada esquina' : 'Pon la mira en cada esquina') + (bb ? '' : ', siguiendo la corriente'), true)}
+        ${MOUSE ? '<p class="lead">Para terminar: doble clic en la última esquina, la tecla <span class="kbd">Enter</span> o el botón verde.</p>' : ''}
+        <div class="fb" id="aimfb"></div>
+        <div class="btns"><button class="b" id="back" type="button" ${added < 1 && !(!ext && n === 1) ? 'disabled' : ''}>Quitar la última</button>${MOUSE ? '' : `<button class="b pri" id="aimok" type="button">${IC.plus}Agregar esquina</button>`}</div>
+        <button class="b go huge" id="finish" type="button" ${(ext ? added < 1 : n < 2) ? 'disabled' : ''}>${IC.check}${bb ? 'Terminar cerca' : 'Terminar alambre'}</button>`);
+      on('back', undoPoint); on('finish', finishWire);
+    }
+    on('dx', cancelDraft); on('cancel', cancelDraft); on('aimok', addPoint);
+    updateAimUI(); return;
+  }
+  if (mode === 'cut') {
+    const w = W(ctx.id);
+    H(`${head('cut', 'Cortar el alambre', MOUSE ? 'Haz clic donde quieres cortar' : 'Pon la mira donde quieres cortar', true)}
+      <p class="lead">Queda un espacio vacío de unos ${fmt(M(CUT_GAP))} entre los dos pedazos. Para conectarlos otra vez: «Cambiar la forma» y arrastra una punta hasta la otra.</p>
+      <div class="fb" id="aimfb"></div>
+      <div class="btns"><button class="b ghost" id="cancel" type="button">Cancelar</button>${MOUSE ? '' : `<button class="b pri huge" id="aimok" type="button">${IC.cut}Cortar aquí</button>`}</div>`);
+    const back = () => { sel = {t: 'w', id: w.id}; setMode('select'); };
+    on('dx', back); on('cancel', back); on('aimok', confirmCut);
+    updateAimUI(); return;
+  }
+  if (mode === 'gate') {
+    const two = !!ctx.a;
+    H(`${head('gate', 'Puerta · paso ' + (two ? 2 : 1) + ' de 2', two ? (MOUSE ? 'Ahora haz clic en el alambre del otro lado' : 'Ahora pon la mira en el alambre del otro lado') : (MOUSE ? 'Haz clic en el alambre de un lado de la puerta' : 'Pon la mira en el alambre de un lado de la puerta'), true)}
+      <p class="lead">La puerta va de un alambre a otro, como la manija que se engancha. Se pega sola a la punta del alambre.</p>
+      <div class="fb" id="aimfb"></div>
+      <div class="btns"><button class="b ghost" id="cancel" type="button">${two ? 'Volver a empezar' : 'Cancelar'}</button>${MOUSE ? '' : `<button class="b pri huge" id="aimok" type="button">${IC.check}${two ? 'Aquí termina' : 'Aquí empieza'}</button>`}</div>`);
+    on('dx', () => setMode('idle')); on('cancel', () => two ? setMode('gate', {a: null}) : setMode('idle')); on('aimok', addGateEnd);
+    updateAimUI(); return;
+  }
+  if (mode === 'cable') {
+    const n = draft.pts.length, eg = !!draft.egate;
+    H(`${head(eg ? 'egate' : 'cable', (eg ? 'Puerta con corriente' : 'Cable puente') + ' · paso ' + (n + 1) + ' de 2', MOUSE ? (n ? 'Ahora haz clic en la punta del alambre del otro lado' : 'Haz clic en el alambre de donde viene la corriente') : (n ? 'Ahora pon la mira en la punta del alambre del otro lado' : 'Pon la mira en el alambre de donde viene la corriente'), true)}
+      <p class="lead">${eg ? (n ? 'Cuando la puerta esté cerrada le pasa la corriente a ese alambre, en el mismo sentido.' : 'Es como un switch en forma de puerta: cerrada pasa la corriente al otro lado, abierta la corta.') : n ? 'El cable le pasa la corriente a ese alambre, en el mismo sentido. Si del otro lado todavía no hay alambre, haz clic donde empieza y luego lo dibujas.' : 'El cable brinca la puerta y le pasa la corriente al alambre del otro lado.'}</p>
+      <div class="fb" id="aimfb"></div>
+      <div class="btns"><button class="b ghost" id="cancel" type="button">Cancelar</button>${MOUSE ? '' : `<button class="b pri huge" id="aimok" type="button">${IC.check}${n ? 'Aquí termina' : 'Aquí empieza'}</button>`}</div>`);
+    on('dx', cancelDraft); on('cancel', cancelDraft); on('aimok', addPoint);
+    updateAimUI(); return;
+  }
+  if (mode === 'cableNext') {
+    H(`${head(isEgate(W(ctx.id)) ? 'egate' : 'cable', isEgate(W(ctx.id)) ? 'Puerta puesta' : 'Cable puesto', '¿Dibujas el alambre que sigue después de la puerta?', false)}
+      <div class="btns"><button class="b" id="no" type="button">No, ya está</button><button class="b pri huge" id="yes" type="button">${IC.wire}Sí, dibujarlo</button></div>`);
+    on('no', () => { sel = {t: 'w', id: ctx.id}; setMode('select'); });
+    on('yes', () => { const c = W(ctx.id); draft = {kind: 'fence', from: c.id, pts: [c.pts[c.pts.length - 1].slice()], base: 1}; setMode('wire'); });
+    return;
+  }
+  if (mode === 'shape') {
+    const w = W(ctx.id);
+    const canDel = ctx.v != null && ctx.v > 0 && w.pts.length > 2;
+    H(`${head('shape', 'Cambiar la forma', w.name, false)}
+      <p class="lead">Arrastra los puntos blancos. ${TAP} un <b>+</b> para agregar una esquina. ${TAP} un punto para quitarlo. Para conectar con otro alambre, arrastra la punta hasta la punta del otro.</p>
+      ${ctx.v != null ? `<div class="btns"><button class="b red" id="delv" type="button" ${canDel ? '' : 'disabled'}>${IC.trash}Quitar este punto</button></div>` : ''}
+      <button class="b go huge" id="done" type="button">${IC.check}Listo</button>`);
+    on('delv', () => { const i = ctx.v; change(() => { w.pts.splice(i, 1); fixParts(w.id); }); ctx.v = null; render(); renderDock(); snack('Punto quitado', true); });
+    on('done', () => { sel = {t: 'w', id: w.id}; setMode('select'); });
+    return;
+  }
+  if (mode === 'choose') {
+    H(`${head('help', '', 'Aquí hay varias cosas. ¿Cuál quieres?', true)}
+      <div class="list">${ctx.list.map((c, i) => li('ch' + i, c.t === 'a' ? 'end' : c.t === 'e' ? 'energizer' : c.t === 'w' ? (W(c.id).kind === 'cable' ? (W(c.id).egate ? 'egate' : 'cable') : isBarb(W(c.id)) ? 'barb' : 'wire') : KIND[PT(c.id).type === 'note' ? 'note' : PT(c.id).type].ic, labelOf(c), kindLabel(c))).join('')}</div>`);
+    on('dx', () => setMode('idle'));
+    ctx.list.forEach((c, i) => on('ch' + i, () => { sel = {t: c.t, id: c.id}; setMode('select'); }));
+    return;
+  }
+  if (mode === 'ask') return renderAsk();
+  if (mode === 'rename') {
+    const cur = ctx.t === 'e' ? EN(ctx.id).name : ctx.t === 'w' ? W(ctx.id).name : PT(ctx.id).name;
+    H(`${head('rename', 'Cambiar nombre', cur, false)}
+      <input type="text" id="nm" value="${esc(cur)}" aria-label="Nombre nuevo" autocomplete="off">
+      <div class="btns"><button class="b ghost" id="cancel" type="button">Cancelar</button><button class="b pri huge" id="ok" type="button">${IC.check}Guardar</button></div>`);
+    const back = () => { sel = {t: ctx.t, id: ctx.id}; setMode('select'); };
+    on('cancel', back);
+    on('ok', () => { const v = $('nm').value.trim(); if (v && v !== cur) change(() => { if (ctx.t === 'e') EN(ctx.id).name = v; else if (ctx.t === 'w') W(ctx.id).name = v; else { const q = PT(ctx.id); (q.grp ? net.parts.filter(o => o.grp === q.grp) : [q]).forEach(o => o.name = v); } }); back(); });
+    setTimeout(() => { const i = $('nm'); if (i) { i.focus(); i.select(); } }, 60);
+    return;
+  }
+  if (mode === 'select') return renderSelect();
+}
+function labelOf(c) { return c.t === 'a' ? 'Fin de «' + W(c.id).name + '»' : c.t === 'e' ? EN(c.id).name : c.t === 'w' ? W(c.id).name : (PT(c.id).name || (PT(c.id).type === 'note' ? (PT(c.id).text || 'Nota').slice(0, 40) : KIND[PT(c.id).type].name)); }
+function kindLabel(c) { return c.t === 'a' ? 'Fin de línea' : c.t === 'e' ? 'Energizador' : c.t === 'w' ? (W(c.id).kind === 'cable' ? (W(c.id).egate ? 'Puerta con corriente' : 'Cable puente') : isBarb(W(c.id)) ? 'Cerca sin corriente' : 'Alambre') : PT(c.id).type === 'note' ? (PT(c.id).by === 'claude' ? 'Pregunta de Claude' : 'Nota') : KIND[PT(c.id).type].name; }
+
+function renderSelect() {
+  if (!sel || !exists(sel)) { setMode('idle'); return; }
+  const close = () => { sel = null; setMode('idle'); };
+  if (sel.t === 'w' && isEgate(W(sel.id))) {
+    const w = W(sel.id), open = !!w.open, live = SOL.reach[w.id] > 0, kids = net.wires.filter(o => o.from === w.id).map(o => o.name).join(', ') || 'nada todavía';
+    H(`${head('egate', 'Puerta con corriente', w.name, true)}
+      <span class="pill ${open ? 'off' : 'on'}">${open ? 'Abierta: no pasa la corriente' : 'Cerrada: pasa la corriente'}</span>
+      <p class="lead">Va de <b>${esc(nameOf(w.from))}</b> a <b>${esc(kids)}</b>. ${open ? 'Como está abierta, lo del otro lado se queda sin corriente.' : live ? 'Le pasa la corriente al otro lado.' : 'Está cerrada, pero lo de antes no tiene corriente.'}</p>
+      <button class="b ${open ? 'go' : 'red'} huge" id="tog" type="button">${IC.power}${open ? 'Cerrar puerta' : 'Abrir puerta'}</button>
+      <div class="list">
+        ${li('a-from', 'from', 'De dónde le llega la corriente', 'Ahora: ' + nameOf(w.from))}
+        ${li('a-name', 'rename', 'Cambiar nombre')}
+        ${li('a-del', 'trash', 'Borrar esta puerta', '', true)}
+      </div>`);
+    on('dx', close);
+    on('tog', () => { const before = liveTotal(SOL); change(() => w.open = !open); const delta = Math.abs(M(liveTotal(SOL) - before)); renderDock(); buzz();
+      snack(open ? `«${w.name}» cerrada: regresó la corriente a ${fmt(delta)}` : `«${w.name}» abierta: ${fmt(delta)} sin corriente`, true); });
+    on('a-from', () => setMode('from', {id: w.id}));
+    on('a-name', () => setMode('rename', {t: 'w', id: w.id}));
+    on('a-del', () => removeThing({t: 'w', id: w.id}));
+    return;
+  }
+  if (sel.t === 'w' && isBarb(W(sel.id))) {
+    const w = W(sel.id), L = SOL.len[w.id];
+    H(`${head('barb', 'Cerca sin corriente', w.name, true)}
+      <p class="lead">Mide ${fmt(M(L))}. Es alambre de púas u otro alambre que no lleva corriente: solo está para que se entienda el mapa.</p>
+      <div class="list">
+        ${li('a-shape', 'shape', 'Cambiar la forma', 'Mover, agregar o quitar esquinas')}
+        ${li('a-ext', 'extend', 'Alargar la cerca', 'Seguir dibujando desde su final')}
+        ${li('a-cut', 'cut', 'Cortar la cerca', 'Deja un espacio vacío, por ejemplo para una puerta')}
+        ${li('a-kind', 'wire', 'Es alambre eléctrico', 'Cambiarla a alambre con corriente')}
+        ${li('a-name', 'rename', 'Cambiar nombre')}
+        ${li('a-del', 'trash', 'Borrar esta cerca', '', true)}
+      </div>`);
+    on('dx', close);
+    on('a-shape', () => setMode('shape', {id: w.id, v: null}));
+    on('a-ext', () => { draft = {kind: 'barb', from: null, pts: w.pts.map(q => q.slice()), extend: w.id, base: w.pts.length}; const e = w.pts[w.pts.length - 1]; sel = null; setMode('wire'); flyTo(e[0], e[1], Math.max(view.k, 2.4)); });
+    on('a-cut', () => setMode('cut', {id: w.id}));
+    on('a-kind', () => { change(() => { w.kind = 'fence'; w.from = null;
+      if (w.was && (EN(w.was) || W(w.was)) && !descendants(w.id).has(w.was)) w.from = w.was;
+      else { const p0 = w.pts[0], e = net.energizers.find(e => dist(p0, [e.x, e.y]) < 3); if (e) w.from = e.id; else { const nw = nearestWire(p0, 3, {noBarb: true, exclude: descendants(w.id)}); w.from = nw ? nw.w.id : null; } }
+      delete w.was; }); renderDock(); snack(w.from ? 'Ahora es alambre eléctrico' : 'Ahora es alambre eléctrico. Dile de dónde le llega la corriente', true); });
+    on('a-name', () => setMode('rename', {t: 'w', id: w.id}));
+    on('a-del', () => removeThing({t: 'w', id: w.id}));
+    return;
+  }
+  if (sel.t === 'w') {
+    const w = W(sel.id), L = SOL.len[w.id], r = SOL.reach[w.id];
+    const pill = r >= L - 1e-6 ? `<span class="pill on">Tiene corriente</span>` : r <= 0 ? `<span class="pill off">Sin corriente</span>` : `<span class="pill off">Corriente solo los primeros ${fmt(M(r))}</span>`;
+    let why = '';
+    if (SOL.why[w.id]) { const q = PT(SOL.why[w.id]); why = q.type === 'gate' ? 'Una puerta sin cable corta la corriente.' : q.type === 'end' ? 'Tiene un fin de línea: de ahí en adelante no hay corriente.' : `El switch «${q.name}» está abierto.`; }
+    else if (!w.from) why = 'No está conectado a nada. Usa «De dónde le llega la corriente».';
+    else if (SOL.far[w.id]) why = `Su punta no toca a «${nameOf(w.from)}», así que no le llega la corriente. Acerca su inicio o usa «De dónde le llega la corriente».`;
+    else if (r <= 0) why = 'Lo que le da corriente ya viene sin corriente.';
+    H(`${head(w.kind === 'cable' ? 'cable' : 'wire', w.kind === 'cable' ? 'Cable puente' : w.kind === 'perimeter' ? 'Alambre del perímetro' : 'Alambre', w.name, true)}
+      ${pill}
+      <p class="lead">${w.kind === 'cable' ? `Le pasa la corriente de <b>${esc(nameOf(w.from))}</b> a <b>${esc(net.wires.filter(o => o.from === w.id).map(o => o.name).join(', ') || 'nada todavía')}</b>.` : (SOL.far[w.id] ? `Mide ${fmt(M(L))}.` : `Mide ${fmt(M(L))}. Le llega la corriente de <b>${esc(nameOf(w.from))}</b>.`)}${why ? ' ' + esc(why) : ''}</p>
+      <div class="list">
+        ${li('a-shape', 'shape', 'Cambiar la forma', 'Mover, agregar o quitar esquinas')}
+        ${w.kind !== 'cable' ? li('a-ext', 'extend', 'Alargar el alambre', 'Seguir dibujando desde su final') : ''}
+        ${w.kind !== 'cable' ? li('a-cut', 'cut', 'Cortar el alambre', 'Deja un espacio vacío, por ejemplo para una puerta') : ''}
+        ${li('a-from', 'from', 'De dónde le llega la corriente', 'Ahora: ' + nameOf(w.from))}
+        ${li('a-flip', 'flip', 'Voltear el sentido de la corriente', 'Las flechas van al revés')}
+        ${w.kind !== 'cable' ? li('a-kind', 'barb', 'Es cerca sin corriente', 'Púas u otro alambre que no lleva corriente') : ''}
+        ${li('a-name', 'rename', 'Cambiar nombre')}
+        ${li('a-del', 'trash', w.kind === 'cable' ? 'Borrar este cable' : 'Borrar este alambre', '', true)}
+      </div>`);
+    on('dx', close);
+    on('a-shape', () => setMode('shape', {id: w.id, v: null}));
+    on('a-ext', () => { draft = {kind: isBarb(w) ? 'barb' : 'fence', from: w.from, pts: w.pts.map(q => q.slice()), extend: w.id, base: w.pts.length}; const e = w.pts[w.pts.length - 1]; sel = null; setMode('wire'); flyTo(e[0], e[1], Math.max(view.k, 2.4)); });
+    on('a-from', () => setMode('from', {id: w.id}));
+    on('a-cut', () => setMode('cut', {id: w.id}));
+    on('a-flip', () => reverseWire(w.id));
+    on('a-kind', () => toBarb(w));
+    on('a-name', () => setMode('rename', {t: 'w', id: w.id}));
+    on('a-del', () => removeThing({t: 'w', id: w.id}));
+    return;
+  }
+  if (sel.t === 'e') {
+    const e = EN(sel.id), c = SOL.circ[e.id], onE = e.on !== false;
+    H(`${head('energizer', 'Energizador', e.name, true)}
+      <span class="pill ${onE ? 'on' : 'off'}">${onE ? 'Prendido' : 'Apagado'}</span>
+      <p class="lead">${onE ? `De aquí sale la corriente. Le da corriente a ${fmt(c.live)} de alambre${c.live < c.total - 1 ? ` (de ${fmt(c.total)} conectados)` : ''}.` : `Está apagado: los ${fmt(c.total)} de alambre que salen de él no tienen corriente.`}</p>
+      <button class="b ${onE ? 'red' : 'go'} huge" id="tog" type="button">${IC.power}${onE ? 'Apagar energizador' : 'Prender energizador'}</button>
+      <div class="list">${li('a-move', 'move', 'Mover')}${li('a-name', 'rename', 'Cambiar nombre')}${li('a-del', 'trash', 'Borrar este energizador', '', true)}</div>`);
+    on('dx', close);
+    on('tog', () => { change(() => e.on = !onE); renderDock(); buzz(); snack(onE ? `Energizador apagado: ${fmt(c.live)} sin corriente` : 'Energizador prendido', true); });
+    on('a-move', () => startMove('e', e.id)); on('a-name', () => setMode('rename', {t: 'e', id: e.id})); on('a-del', () => removeThing({t: 'e', id: e.id}));
+    return;
+  }
+  if (sel.t === 'a') {
+    const w = W(sel.id), jm = mergeTarget(w.id, w.pts.length - 1, w.pts[w.pts.length - 1]), jo = jm && !jm.bad ? W(jm.A === w.id ? jm.B : jm.A) : null;
+    H(`${head('end', 'Fin de línea', 'Aquí se acaba «' + w.name + '»', true)}
+      <p class="lead">${(() => { const e = w.pts[w.pts.length - 1], o = net.wires.find(o => o !== w && o.kind !== 'cable' && !isBarb(o) && project(e, o.pts).d < 1.5);
+        return o ? `Llega pegado a «${esc(o.name)}», pero en ese poste solo lleva el aislador y ya no sigue: el punto negro pegado al cruce es su fin de línea.` : 'Este punto negro sale solo porque aquí termina el alambre.'; })()} Si el alambre en realidad sigue, alárgalo o cambia su forma.</p>
+      <div class="list">${jo ? li('a-join', 'from', jm.feed ? `Pasarle la corriente a «${jo.name}»` : `Conectar con «${jo.name}»`, 'En lugar de que muera aquí, la corriente sigue') : ''}${w.kind !== 'cable' ? li('a-ext', 'extend', 'Alargar el alambre', 'Seguir dibujando desde aquí') : ''}${li('a-wire', 'wire', 'Ver el alambre', w.name)}${li('a-del', 'trash', 'Borrar este alambre', w.name, true)}</div>`);
+    on('dx', close);
+    on('a-ext', () => { draft = {kind: isBarb(w) ? 'barb' : 'fence', from: w.from, pts: w.pts.map(q => q.slice()), extend: w.id, base: w.pts.length}; sel = null; setMode('wire'); });
+    on('a-wire', () => { sel = {t: 'w', id: w.id}; setMode('select'); });
+    on('a-join', () => askJoinEnd(w.id));
+    on('a-del', () => removeThing({t: 'w', id: w.id}));
+    return;
+  }
+  const q = PT(sel.id);
+  if (q.type === 'switch') {
+    const grp = q.grp ? net.parts.filter(o => o.grp === q.grp) : [q];
+    const alt = solve(net, q), delta = Math.abs(M(liveTotal(alt) - liveTotal(SOL)));
+    H(`${head('switch', 'Switch', q.name, true)}
+      <span class="pill ${q.open ? 'off' : 'on'}">${q.open ? 'Abierto: no pasa la corriente' : 'Cerrado: pasa la corriente'}</span>
+      <p class="lead">${q.open ? `Está dejando sin corriente ${fmt(delta)}.` : `Si lo abres, se quedan sin corriente ${fmt(delta)}.`}${grp.length > 1 ? ` Corta ${grp.length} salidas a la vez.` : ''}</p>
+      <button class="b ${q.open ? 'go' : 'red'} huge" id="tog" type="button">${IC.power}${q.open ? 'Cerrar switch (dar corriente)' : 'Abrir switch (cortar)'}</button>
+      <div class="list">${li('a-move', 'move', 'Mover', q.on ? 'Ahora sobre: ' + nameOf(q.on) : '')}${li('a-name', 'rename', 'Cambiar nombre')}${li('a-del', 'trash', 'Borrar este switch', '', true)}</div>`);
+    on('dx', close);
+    on('tog', () => toggleSwitch(q));
+    on('a-move', () => startMove('p', q.id)); on('a-name', () => setMode('rename', {t: 'p', id: q.id})); on('a-del', () => removeThing({t: 'p', id: q.id}));
+    return;
+  }
+  if (q.type === 'end') {
+    const w = W(q.on), rest = w ? M(SOL.len[w.id] - q.s) : 0;
+    H(`${head('end', 'Fin de línea', 'Aquí termina la corriente', true)}
+      <p class="lead">Está sobre «${esc(nameOf(q.on))}». De este punto en adelante el alambre no tiene corriente${rest > 3 ? ` (quedan ${fmt(rest)} sin corriente)` : ''}.</p>
+      <div class="list">${rest > 3 ? li('a-trim', 'trash', 'Quitar el alambre que sobra', `Borra los ${fmt(rest)} que siguen después del punto`) : ''}${li('a-move', 'move', 'Mover')}${li('a-del', 'trash', 'Borrar este fin de línea', '', true)}</div>`);
+    on('dx', close); on('a-move', () => startMove('p', q.id)); on('a-del', () => removeThing({t: 'p', id: q.id}));
+    on('a-trim', () => trimAt(q));
+    return;
+  }
+  if (isGate2(q)) {
+    const A = anchorPos(q.a), B = anchorPos(q.b), wide = A && B ? M(dist(A, B)) : 0;
+    const same = q.a.on === q.b.on;
+    H(`${head('gate', 'Puerta', same ? 'Puerta en «' + nameOf(q.a.on) + '»' : 'Puerta entre dos alambres', true)}
+      <p class="lead">${same ? '' : `Va de «${esc(nameOf(q.a.on))}» a «${esc(nameOf(q.b.on))}». `}Mide unos ${fmt(wide)} de ancho. Por la puerta no pasa la corriente; si la corriente brinca por arriba, pon un «Cable puente».</p>
+      <div class="list">${li('a-redo', 'move', 'Volver a ponerla', 'Elegir otra vez los dos alambres')}${li('a-del', 'trash', 'Borrar esta puerta', '', true)}</div>`);
+    on('dx', close); on('a-del', () => removeThing({t: 'p', id: q.id}));
+    on('a-redo', () => { change(() => { net.parts = net.parts.filter(o => o !== q); }); sel = null; setMode('gate', {a: null}); snack('Haz los dos clics de nuevo', true); });
+    return;
+  }
+  if (q.type === 'gate') {
+    const pos = partPos(q);
+    H(`${head('gate', 'Puerta', 'Puerta de un solo punto', true)}
+      <p class="lead">Esta puerta quedó de la versión anterior y no está pegada a dos alambres. Ponla de nuevo entre los dos alambres.</p>
+      <button class="b pri huge" id="regate" type="button">${IC.gate}Ponerla entre 2 alambres</button>
+      <div class="list">${li('a-del', 'trash', 'Borrar esta puerta', '', true)}</div>`);
+    on('dx', close); on('a-del', () => removeThing({t: 'p', id: q.id}));
+    on('regate', () => { change(() => { net.parts = net.parts.filter(o => o !== q); }); sel = null; setMode('gate', {a: null}); flyTo(pos[0], pos[1], Math.max(view.k, 3)); });
+    return;
+  }
+  if (q.type === 'gate') {
+    H(`${head('gate', 'Puerta', 'Puerta', true)}
+      <p class="lead">${q.on ? `Está sobre «${esc(nameOf(q.on))}». Como no tiene cable encima, de aquí en adelante no pasa la corriente.` : 'Está marcada en el mapa, pero no sobre un alambre, así que no corta nada.'}</p>
+      <div class="list">${li('a-move', 'move', 'Mover')}${li('a-del', 'trash', 'Borrar esta puerta', '', true)}</div>`);
+    on('dx', close); on('a-move', () => startMove('p', q.id)); on('a-del', () => removeThing({t: 'p', id: q.id}));
+    return;
+  }
+  if (q.type === 'note' && q.by === 'claude') { const list = net.parts.filter(p => p.type === 'note' && p.by === 'claude').map(p => p.id); sel = null; setMode('ask', {list, i: Math.max(0, list.indexOf(q.id))}); flyToNote(); return; }
+  if (q.type === 'note') {
+    H(`${head('note', 'Nota para Claude', 'Lo que quieres que sepa', true)}
+      <textarea id="nt" aria-label="Texto de la nota" placeholder="Ej. aquí el alambre sigue hasta el bebedero">${esc(q.text || '')}</textarea>
+      <button class="b pri huge" id="ok" type="button">${IC.check}Guardar nota</button>
+      <div class="list">${li('a-move', 'move', 'Mover')}${li('a-del', 'trash', 'Borrar esta nota', '', true)}</div>`);
+    on('dx', close);
+    on('ok', () => { const v = $('nt').value; if (v !== q.text) change(() => q.text = v); snack('Nota guardada'); sel = null; setMode('idle'); });
+    on('a-move', () => startMove('p', q.id)); on('a-del', () => removeThing({t: 'p', id: q.id}));
+    if (ctx.focus) setTimeout(() => { const t = $('nt'); if (t) t.focus(); }, 60);
+  }
+}
+
+function switchGroups() { const seen = new Set(); return net.parts.filter(q => q.type === 'switch' && !(q.grp && seen.has(q.grp)) && (q.grp ? seen.add(q.grp) : true)).sort((a, b) => a.name.localeCompare(b.name, 'es')); }
+function toggleSwitch(q) {
+  const grp = q.grp ? net.parts.filter(o => o.grp === q.grp) : [q];
+  const delta = Math.abs(M(liveTotal(solve(net, q)) - liveTotal(SOL))), nv = !q.open;
+  change(() => grp.forEach(o => o.open = nv)); renderDock(); buzz();
+  snack(nv ? `«${q.name}» abierto: ${fmt(delta)} sin corriente` : `«${q.name}» cerrado: regresó la corriente a ${fmt(delta)}`, true);
+}
+
+/* ---------- botones del mapa: agregar, filtros, preguntas ---------- */
+const pop = $('pop');
+let popKind = null;
+function closePop() { pop.hidden = true; pop.textContent = ''; popKind = null; ['tAdd', 'tFilter'].forEach(id => $(id).setAttribute('aria-expanded', 'false')); }
+function popHead(title) { return `<div class="ph"><h2>${esc(title)}</h2><button class="x" type="button" id="popX" aria-label="Cerrar">${IC.x}</button></div>`; }
+function openPop(kind) {
+  if (popKind === kind) { closePop(); return; }
+  closePop(); popKind = kind; pop.hidden = false;
+  $(kind === 'add' ? 'tAdd' : 'tFilter').setAttribute('aria-expanded', 'true');
+  renderPop();
+}
+function renderPop() {
+  if (popKind === 'add') {
+    pop.innerHTML = popHead('¿Qué quieres agregar?') + `<div class="grid6">${['wire', 'barb', 'switch', 'gate', 'egate', 'cable', 'end', 'energizer', 'note'].map(k => `<button class="card" type="button" data-k="${k}">${IC[KIND[k].ic]}<b>${KIND[k].name}</b><small>${KIND[k].desc}</small></button>`).join('')}</div>`;
+    pop.querySelectorAll('.card').forEach(b => b.onclick = () => { closePop(); sel = null; startAdd(b.dataset.k); });
+  } else if (popKind === 'filter') {
+    pop.innerHTML = popHead('Qué se ve en el mapa') + `<p>El alambre siempre se ve. Prende o apaga lo demás; lo que se queda se marca con un aro amarillo.</p>
+      <div class="chips">${FILTERS.map(([key, label]) => `<button class="chip" type="button" data-f="${key}" aria-pressed="${V(key)}">${IC[key === 'flow' ? 'flow' : KIND[key].ic]}${label}</button>`).join('')}</div>
+      <div class="btns"><button class="b sm" id="fAll" type="button" ${filtering() ? '' : 'disabled'}>Ver todo</button><button class="b sm" id="fNone" type="button">Solo alambre</button></div>`;
+    pop.querySelectorAll('.chip[data-f]').forEach(b => b.onclick = () => { const k = b.dataset.f; setVis(Object.assign({}, vis, {[k]: !V(k)})); });
+    on('fAll', () => setVis({})); on('fNone', () => setVis(Object.fromEntries(FILTERS.map(([key]) => [key, false]))));
+  }
+  on('popX', closePop);
+}
+function updateTools() {
+  const box = $('tools2'); if (!box) return;
+  box.hidden = !['idle', 'select', 'choose'].includes(mode);
+  if (box.hidden && popKind) closePop();
+  const n = pendingQs().length;
+  $('tAsk').hidden = !n; $('askBadge').textContent = n ? String(n) : '';
+  $('fDot').hidden = !filtering();
+  $('tFilter').setAttribute('aria-label', filtering() ? 'Qué se ve en el mapa (hay un filtro activo)' : 'Qué se ve en el mapa');
+}
+$('tAdd').onclick = () => openPop('add');
+$('tFilter').onclick = () => openPop('filter');
+$('tAsk').onclick = () => { closePop(); sel = null; startAsk(); };
+document.addEventListener('pointerdown', e => { if (popKind && !pop.contains(e.target) && !e.target.closest('#tools2')) closePop(); });
+
+/* ---------- preguntas de Claude, una por una ---------- */
+function startAsk() {
+  const all = net.parts.filter(p => p.type === 'note' && p.by === 'claude').map(p => p.id);
+  const first = all.findIndex(id => !(PT(id).answer || '').trim());
+  setMode('ask', {list: all, i: Math.max(0, first)}); flyToNote();
+}
+function flyToNote() { const q = PT(ctx.list[ctx.i]); if (q) flyTo(q.x, q.y + 30, Math.max(view.k, 2.2)); }
+function renderAsk() {
+  const q = PT(ctx.list[ctx.i]); if (!q) { setMode('idle'); return; }
+  const n = ctx.list.length, txt = q.text.replace(/^\?\d+\s*/, ''), ans = (q.answer || '').trim();
+  H(`${head('ask', `Pregunta ${ctx.i + 1} de ${n}`, 'Pregunta de Claude', true)}
+    <p class="q">${esc(txt)}</p>
+    ${ans ? `<p class="ans">Tu respuesta: ${esc(ans)}</p>` : ''}
+    ${ctx.write ? `<textarea id="ta" aria-label="Tu respuesta" placeholder="Explícame con tus palabras">${esc(ans === 'Sí, está bien' || ans === 'No sé' ? '' : ans)}</textarea>
+      <button class="b pri huge" id="save" type="button">${IC.check}Guardar respuesta</button>`
+    : `<div class="btns"><button class="b go huge" id="yes" type="button">${IC.check}Sí, está bien</button><button class="b huge" id="no" type="button">No, te explico</button></div>
+      <button class="b ghost" id="dk" type="button">No sé</button>`}
+    <div class="nav"><button class="b ghost" id="prev" type="button" ${ctx.i ? '' : 'disabled'}>‹ Anterior</button><button class="b ghost" id="next" type="button">${ctx.i < n - 1 ? 'Siguiente ›' : 'Terminar'}</button></div>`);
+  const answer = v => { change(() => q.answer = v); buzz(); ctx.write = false; next(); };
+  const next = () => { if (ctx.i < n - 1) { ctx.i++; ctx.write = false; renderDock(); render(); flyToNote(); } else { setMode('idle'); snack(pendingQs().length ? `Faltan ${pendingQs().length} preguntas` : '¡Gracias! Contestaste todas las preguntas'); } };
+  on('dx', () => setMode('idle'));
+  on('yes', () => answer('Sí, está bien')); on('dk', () => answer('No sé'));
+  on('no', () => { ctx.write = true; renderDock(); setTimeout(() => $('ta') && $('ta').focus(), 60); });
+  on('save', () => { const v = $('ta').value.trim(); if (!v) { $('ta').focus(); return; } answer(v); });
+  on('prev', () => { ctx.i--; ctx.write = false; renderDock(); render(); flyToNote(); });
+  on('next', next);
+}
+
+/* ---------- acciones ---------- */
+function onTap(p, vtx) {
+  if (mode === 'shape') {
+    const w = W(ctx.id);
+    if (vtx != null) { ctx.v = ctx.v === vtx ? null : vtx; render(); renderDock(); return; }
+    for (let i = 1; i < w.pts.length; i++) {   // tocar un "+"
+      const a = w.pts[i - 1], b = w.pts[i], m = [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2];
+      if (dist(a, b) >= R(56) && dist(p, m) < R(22)) { change(() => { w.pts.splice(i, 0, m); fixParts(w.id); }); ctx.v = i; render(); renderDock(); return; }
+    }
+    ctx.v = null; render(); renderDock(); return;
+  }
+  if (AIM_MODES.has(mode)) {
+    if (!MOUSE) { flyTo(p[0], p[1]); return; }   // en el celular: tocar mueve la mira ahí
+    hover = {x: p[0] * view.k + view.tx, y: p[1] * view.k + view.ty};   // con mouse: el clic es la acción
+    ({place: confirmPlace, move: confirmMove, from: confirmFrom, wire: addPoint, cable: addPoint, gate: addGateEnd, cut: confirmCut})[mode]();
+    return;
+  }
+  if (mode === 'ask') return;
+  const c = candidates(p);
+  if (!c.length) { if (sel) { sel = null; setMode('idle'); } return; }
+  const close = c.filter(x => x.d - c[0].d < R(10)).filter((x, i, a) => a.findIndex(y => y.id === x.id && y.t === x.t) === i).slice(0, 5);
+  if (close.length > 1) { sel = null; setMode('choose', {list: close}); return; }
+  sel = {t: c[0].t, id: c[0].id}; setMode('select');
+}
+function startAdd(k) {
+  const fk = k === 'egate' ? 'gate' : k;
+  if (k !== 'wire' && !V(fk)) { vis = Object.assign({}, vis, {[fk]: true}); try { localStorage.setItem('cerco-filtro', JSON.stringify(vis)); } catch (e) {} updateZoomChip(); }
+  if (k === 'wire') { draft = {kind: 'fence', from: null, pts: [], base: 1}; setMode('wire'); return; }
+  if (k === 'cable') { draft = {kind: 'cable', from: null, pts: []}; setMode('cable'); return; }
+  if (k === 'egate') { draft = {kind: 'cable', egate: true, from: null, pts: []}; setMode('cable'); return; }
+  if (k === 'barb') { draft = {kind: 'barb', from: null, pts: [], base: 1}; setMode('wire'); return; }
+  if (k === 'gate') { setMode('gate', {a: null}); if (view.k < 1.6) flyTo(...aimWorld(), 2.4); return; }
+  setMode('place', {type: k});
+  if (view.k < 1.6) flyTo(...aimWorld(), 2);
+}
+function confirmPlace() {
+  const a = aimState(); if (a.ok === false) { snack(a.msg); return; }
+  const t = ctx.type; let item;
+  if (t === 'end') item = {id: uid('f'), type: 'end', on: a.w, s: a.s};
+  else if (t === 'switch') item = {id: uid('sw'), type: 'switch', on: a.w, s: a.s, name: 'Switch ' + (net.parts.filter(q => q.type === 'switch').length + 1), open: false};
+  else if (t === 'gate') item = a.w ? {id: uid('g'), type: 'gate', on: a.w, s: a.s} : {id: uid('g'), type: 'gate', x: a.pt[0], y: a.pt[1]};
+  else if (t === 'note') item = {id: uid('n'), type: 'note', by: 'diego', x: a.pt[0], y: a.pt[1], text: ''};
+  if (t === 'energizer') { const e = {id: uid('E'), name: 'Energizador ' + (net.energizers.length + 1), x: a.pt[0], y: a.pt[1], on: true}; change(() => net.energizers.push(e)); sel = {t: 'e', id: e.id}; }
+  else { change(() => net.parts.push(item)); sel = {t: 'p', id: item.id}; }
+  buzz(); snack({switch: 'Switch puesto', gate: 'Puerta puesta', end: 'Fin de línea puesto', energizer: 'Energizador puesto', note: 'Escribe tu nota'}[t], true);
+  setMode('select', t === 'note' ? {focus: true} : {});
+}
+function addGateEnd() {
+  const a = aimState(); if (a.ok === false) { snack(a.msg); return; }
+  if (!ctx.a) { ctx.a = {on: a.w, s: a.s}; buzz(); render(); renderDock(); return; }
+  const g = {id: uid('g'), type: 'gate', a: ctx.a, b: {on: a.w, s: a.s}};
+  change(() => net.parts.push(g)); buzz(); snack('Puerta puesta', true);
+  sel = {t: 'p', id: g.id}; setMode('select');
+}
+function confirmCut() {
+  const a = aimState(); if (a.ok === false) { snack(a.msg); return; }
+  const w = W(ctx.id), orig = w.pts.map(q => q.slice()), s1 = a.s - CUT_GAP / 2, s2 = a.s + CUT_GAP / 2;
+  const w2 = {id: uid('w'), name: w.name.replace(/ \(\d+\)$/, '') + ' (2)', kind: w.kind, pts: splitAt(orig, s2)[1], from: null};
+  change(() => {
+    w.pts = splitAt(orig, s1)[0];
+    const move = an => { if (an.on !== w.id) return; if (an.s > s2) { an.on = w2.id; an.s = Math.max(0, an.s - s2); } else if (an.s > s1) an.s = s1; };
+    net.parts.forEach(q => { if (q.on) move(q); if (isGate2(q)) { move(q.a); move(q.b); } });
+    net.wires.forEach(o => { if (o.from === w.id && project(o.pts[0], orig).s > a.s) o.from = w2.id; });
+    net.wires.splice(net.wires.indexOf(w) + 1, 0, w2);
+  });
+  buzz(); snack(isBarb(w) ? 'Cerca cortada' : 'Alambre cortado. Lo que sigue quedó sin corriente', true);
+  sel = null; setMode('idle');
+}
+function startMove(t, id) { sel = null; setMode('move', {t, id}); const pos = t === 'e' ? [EN(id).x, EN(id).y] : partPos(PT(id)); flyTo(pos[0], pos[1], Math.max(view.k, 2)); }
+function confirmMove() {
+  const a = aimState(); if (a.ok === false) { snack(a.msg); return; }
+  change(() => {
+    if (ctx.t === 'e') { const e = EN(ctx.id); net.wires.forEach(w => { if (w.from === e.id) w.pts[0] = a.pt.slice(); }); e.x = a.pt[0]; e.y = a.pt[1]; }
+    else { const q = PT(ctx.id); if (a.w) { q.on = a.w; q.s = a.s; delete q.x; delete q.y; } else { delete q.on; delete q.s; q.x = a.pt[0]; q.y = a.pt[1]; } }
+  });
+  buzz(); snack('Movido', true); sel = {t: ctx.t, id: ctx.id}; setMode('select');
+}
+function confirmFrom() {
+  const a = aimState(); if (a.ok === false) { snack(a.msg); return; }
+  const w = W(ctx.id);
+  change(() => { w.from = a.from; w.pts[0] = a.pt.slice(); });
+  buzz(); snack('Ahora le llega de ' + nameOf(a.from), true); sel = {t: 'w', id: w.id}; setMode('select');
+}
+// ¿a qué alambre le pasa la corriente el cable? Solo por una punta y en el mismo sentido del flujo
+function cableTarget(p) {
+  const src = draft && draft.from;
+  const nw = nearestWire(p, R(24), {noCable: true, noBarb: true, exclude: new Set([src])});
+  if (!nw) return null;
+  const w = nw.w, a = w.pts[0], b = w.pts[w.pts.length - 1], dA = dist(p, a), dB = dist(p, b);
+  const tip = dA <= dB ? 'start' : 'end', pt = (tip === 'start' ? a : b).slice();
+  if (Math.min(dA, dB) > R(28)) return {bad: true, pt: [nw.q.x, nw.q.y], msg: `Lleva el cable a la punta de «${w.name}»`};
+  if (descendants(w.id).has(src)) return {bad: true, pt, msg: `«${w.name}» le da corriente a este lado: se haría un círculo`};
+  const powered = !!SOL.root[w.id];
+  if (powered && tip === 'end') return {bad: true, pt, msg: `«${w.name}» ya tiene corriente y va en sentido contrario`};
+  if (powered && !(draft && draft.egate) && !SOL.far[w.id]) return {id: w.id, pt, action: 'mark', msg: `Conecta con «${w.name}», que ya tiene corriente en el mismo sentido`};
+  if (powered) return {id: w.id, pt, action: 'feed', msg: `${draft && draft.egate ? 'La puerta le pasa' : 'Le pasa'} la corriente a «${w.name}»`};   // la puerta blanca siempre se une sola
+  return {id: w.id, pt, action: tip === 'start' ? 'feed' : 'flipfeed', msg: `Le pasa la corriente a «${w.name}»` + (tip === 'end' ? ' (le volteo el sentido)' : '')};
+}
+function addPoint() {
+  const a = aimState(); if (a.ok === false) { snack(a.msg); return; }
+  if (draft.pts.length && dist(draft.pts[draft.pts.length - 1], a.pt) < R(4)) return;   // doble clic
+  if (!draft.pts.length) draft.from = a.from;
+  draft.pts.push(a.pt.slice()); buzz();
+  if (mode === 'cable' && draft.pts.length === 2) return finishCable(a.target);
+  render(); renderDock();
+}
+function undoPoint() { const min = draft.extend ? draft.base : 1; if (draft.pts.length > min) draft.pts.pop(); else if (!draft.extend) draft.pts = []; render(); renderDock(); }
+function cancelDraft() { const ext = draft && draft.extend; draft = null; if (ext) { sel = {t: 'w', id: ext}; setMode('select'); } else setMode('idle'); }
+function finishWire() {
+  if (draft.extend) {
+    const w = W(draft.extend), extra = draft.pts.slice(draft.base); draft = null;
+    if (extra.length) change(() => { w.pts = w.pts.concat(extra); });
+    snack(isBarb(w) ? 'Cerca alargada' : 'Alambre alargado', true); sel = {t: 'w', id: w.id}; setMode('select'); askJoinEnd(w.id); return;
+  }
+  if (draft.pts.length < 2) return;
+  if (draft.kind === 'barb') {
+    const w = {id: uid('b'), name: 'Cerca sin corriente ' + (net.wires.filter(isBarb).length + 1), kind: 'barb', pts: draft.pts.map(q => q.slice()), from: null};
+    draft = null; change(() => net.wires.push(w));
+    buzz(); snack('Cerca agregada', true); sel = {t: 'w', id: w.id}; setMode('select'); askJoinEnd(w.id); return;
+  }
+  const parent = draft.from && W(draft.from);
+  const kind = parent && parent.kind === 'perimeter' ? 'perimeter' : 'fence';
+  const w = {id: uid('w'), name: 'Alambre nuevo ' + (net.wires.filter(x => /^Alambre nuevo/.test(x.name)).length + 1), kind, pts: draft.pts.map(q => q.slice()), from: draft.from};
+  draft = null; change(() => net.wires.push(w));
+  buzz(); snack('Alambre agregado', true); sel = {t: 'w', id: w.id}; setMode('select'); askJoinEnd(w.id);
+}
+// el alambre que acabas de dibujar termina en la punta de otro: ¿se juntan en uno solo o se quedan separados (punto negro)?
+function askJoinEnd(id) {
+  const w = W(id); if (!w) return;
+  const m = mergeTarget(id, w.pts.length - 1, w.pts[w.pts.length - 1]);
+  if (!m) return;
+  if (m.bad) { snack(m.msg); return; }
+  if (m.feed) { askYesNo(feedPlan(m)); return; }
+  const other = W(m.A === id ? m.B : m.A);
+  askYesNo({title: `¿Conectar con «${other.name}»?`, text: 'El alambre termina en la punta de otro. Si dices que sí, la corriente pasa de uno al otro (siguen siendo dos alambres). Si dices que no, quedan separados y ahí sale el punto negro.',
+    yes: 'Sí, conectarlos', no: 'No, dejarlos separados', done: connectMsg(m), fn: () => doConnect(m)});
+}
+function finishCable(t) {
+  const eg = !!draft.egate;
+  const w = {id: uid('c'), name: eg ? 'Puerta con corriente ' + (net.wires.filter(isEgate).length + 1) : 'Cable puente', kind: 'cable', pts: draft.pts.map(q => q.slice()), from: draft.from};
+  if (eg) { w.egate = true; w.open = false; }
+  draft = null;
+  change(() => {
+    net.wires.push(w);
+    if (t) { const B = W(t.id); if (t.action === 'flipfeed') flipGeom(B.id); if (t.action !== 'mark') { B.from = w.id; B.pts[0] = w.pts[1].slice(); } }
+  });
+  buzz();
+  const P = eg ? 'Puerta puesta' : 'Cable puesto';
+  if (!t) { snack(P, true); setMode('cableNext', {id: w.id}); return; }
+  const B = W(t.id);
+  snack(t.action === 'mark' ? P : SOL.reach[B.id] > 0 ? `${P}: «${B.name}» ya tiene corriente` : `${P}. «${B.name}» sigue sin corriente porque lo de antes no tiene`, true);
+  sel = {t: 'w', id: w.id}; setMode('select');
+}
+function flipGeom(id) {   // voltea el dibujo de un alambre y lo que tiene encima
+  const w = W(id), L = plen(w.pts);
+  w.pts.reverse();
+  net.parts.forEach(q => { if (q.on === id) q.s = Math.max(0, L - q.s); if (isGate2(q)) [q.a, q.b].forEach(an => { if (an.on === id) an.s = Math.max(0, L - an.s); }); });
+}
+function trimAt(q) {
+  const w = W(q.on); if (!w) return;
+  const [keep] = splitAt(w.pts, q.s), L = q.s;
+  let lost = 0;
+  change(() => {
+    w.pts = keep.length > 1 ? keep : w.pts.slice(0, 2);
+    net.parts = net.parts.filter(o => !(o.on === w.id && o !== q && o.s > L + 0.5) && !(isGate2(o) && [o.a, o.b].some(an => an.on === w.id && an.s > L + 0.5)));
+    net.parts = net.parts.filter(o => o !== q);   // el final del alambre ya marca el punto negro
+    net.wires.forEach(o => { if (o.from === w.id && project(o.pts[0], w.pts).d > 1.5) { o.from = null; lost++; } });
+  });
+  sel = {t: 'a', id: w.id}; setMode('select');
+  snack('Alambre recortado' + (lost ? `. ${lost === 1 ? 'Un alambre quedó' : lost + ' alambres quedaron'} sin conexión` : ''), true);
+}
+function fixParts(id) { const w = W(id), L = plen(w.pts); net.parts.forEach(q => { if (q.on === id) q.s = Math.min(q.s, L); if (isGate2(q)) [q.a, q.b].forEach(an => { if (an.on === id) an.s = Math.min(an.s, L); }); }); }
+let mergeHint = null;
+// ¿la punta que arrastro cae sobre la punta de otro alambre? Solo así se juntan
+function mergeTarget(id, vtx, pt) {
+  const w = W(id); if (!w || w.kind === 'cable') return null;
+  const isStart = vtx === 0, isEnd = vtx === w.pts.length - 1; if (!isStart && !isEnd) return null;
+  let best = null;
+  net.wires.forEach(o => {
+    if (o === w || o.kind === 'cable' || isBarb(o) !== isBarb(w)) return;
+    const oS = o.pts[0], oE = o.pts[o.pts.length - 1], dS = dist(pt, oS), dE = dist(pt, oE);
+    const consider = (d, plan) => { if (d <= R(16) && (!best || d < best.d)) best = Object.assign({d}, plan); };
+    if (isEnd) {
+      // si el otro ya recibe corriente de otro lado, se le puede pasar la corriente de este (deja de recibirla de donde la recibía)
+      consider(dS, !o.from || o.from === w.id ? {A: w.id, B: o.id, flipB: false, pt: oS.slice()} : descendants(o.id).has(w.id) ? {bad: true, pt: oS.slice(), msg: `No se conectan: «${w.name}» recibe su corriente de «${o.name}», se haría un círculo`} : {feed: true, A: w.id, B: o.id, pt: oS.slice()});
+      consider(dE, !o.from ? {A: w.id, B: o.id, flipB: true, pt: oE.slice()} : {bad: true, pt: oE.slice(), msg: `No se juntan: las dos corrientes chocarían`});
+    } else {
+      if (!w.from || w.from === o.id) consider(dE, {A: o.id, B: w.id, flipB: false, pt: oE.slice()});   // si ya recibe de otro lado, al soltar se pregunta si se conecta
+      if (!net.energizers.some(e => dist(oS, [e.x, e.y]) < 3)) consider(dS, {bad: true, pt: oS.slice(), msg: 'No se juntan: los dos alambres empiezan ahí'});   // en un energizador sí pueden salir varios
+    }
+  });
+  return best;
+}
+// «B» empieza donde termina «A»: ahora B (y lo que salía de ese mismo punto con la misma corriente) recibe la corriente de A
+function feedPlan(m) {
+  const A = W(m.A), B = W(m.B), old = B.from;
+  // todo lo que empieza en ese mismo punto y recibía corriente directo del energizador o de lo mismo que B
+  const list = net.wires.filter(o => o !== A && o.kind !== 'cable' && !isBarb(o) && dist(o.pts[0], m.pt) < 1.5 && (o === B || EN(o.from) || o.from === old) && !descendants(o.id).has(A.id));
+  const names = list.map(o => `«${o.name}»`), nm = names.length > 1 ? names.slice(0, -1).join(', ') + ' y ' + names[names.length - 1] : names[0];
+  return {title: `¿Pasarle la corriente a ${nm}?`, text: `Ahora ${list.length > 1 ? 'reciben' : 'recibe'} la corriente por otro lado. Si dices que sí, le${list.length > 1 ? 's' : ''} llegará de «${A.name}», y si quitas «${A.name}» se ${list.length > 1 ? 'quedan' : 'queda'} sin corriente. Si dices que no, quedan separados y ahí sale el punto negro.`,
+    yes: 'Sí, que le llegue de aquí', no: 'No, dejarlos separados', done: `Ahora la corriente pasa por «${A.name}»`,
+    fn: () => { list.forEach(o => { o.from = A.id; o.pts[0] = m.pt.slice(); }); if (B.kind === 'perimeter' && A.kind === 'fence') A.kind = 'perimeter'; }};
+}
+// «A» termina donde empieza «B»: se conectan (la corriente pasa de A a B) pero siguen siendo dos alambres
+function doConnect(m) {
+  const A = W(m.A), B = W(m.B);
+  if (m.flipB) flipGeom(B.id);   // B iba al revés y no tenía corriente: se voltea para que siga el flujo
+  B.from = A.id; B.pts[0] = m.pt.slice(); A.pts[A.pts.length - 1] = m.pt.slice();
+  return B.id;
+}
+const connectMsg = m => `Conectados: la corriente pasa de «${W(m.A).name}» a «${W(m.B).name}»`;
+function doMerge(m) {   // A termina donde B empieza: B se vuelve la continuación de A
+  const A = W(m.A), B = W(m.B);
+  if (B.kind === 'perimeter' && A.kind === 'fence') A.kind = 'perimeter';
+  if (m.flipB) flipGeom(B.id);
+  A.pts[A.pts.length - 1] = m.pt.slice();
+  const LA = plen(A.pts);
+  A.pts = A.pts.concat(B.pts.slice(1));
+  const move = an => { if (an.on === B.id) { an.on = A.id; an.s += LA; } };
+  net.parts.forEach(q => { if (q.on) move(q); if (isGate2(q)) { move(q.a); move(q.b); } });
+  net.wires.forEach(o => { if (o.from === B.id) o.from = A.id; });
+  if (A.from === B.id) A.from = null;
+  net.wires = net.wires.filter(o => o !== B);
+  A.name = A.name.replace(/ \(\d+\)$/, '') || A.name;
+  return A.id;
+}
+function toBarb(w) {   // un alambre que en realidad es de púas: deja de llevar corriente y suelta lo eléctrico
+  let kids = 0, gone = 0;
+  change(() => {
+    w.kind = 'barb'; if (w.from) w.was = w.from; w.from = null;   // se recuerda de dónde le llegaba, por si se regresa
+    net.wires.forEach(o => { if (o.from === w.id) { o.from = null; kids++; } });
+    const before = net.parts.length; net.parts = net.parts.filter(q => !(q.on === w.id && (q.type === 'switch' || q.type === 'end'))); gone = before - net.parts.length;
+  });
+  renderDock(); snack('Ahora es cerca sin corriente' + (gone ? `. Se quitaron ${gone === 1 ? 'un switch o fin de línea' : gone + ' switches o fines de línea'}` : '') + (kids ? `. ${kids === 1 ? 'Un alambre quedó' : kids + ' alambres quedaron'} sin conexión` : ''), true);
+}
+function reattach(id) {
+  const w = W(id); if (!w || isBarb(w)) return;
+  const s = snapSource(w.pts[0], descendants(id));
+  if (s) { w.from = s.from; w.pts[0] = s.pt.slice(); }
+}
+function reverseWire(id) {
+  change(() => {
+    const w = W(id); flipGeom(id);
+    const p = w.pts[0], e = net.energizers.find(e => dist(p, [e.x, e.y]) < 3);
+    if (e) w.from = e.id; else { const nw = nearestWire(p, 3, {exclude: descendants(id)}); w.from = nw ? nw.w.id : null; }
+  });
+  renderDock(); snack('Ahora la corriente va al revés', true);
+}
+function removeThing(h) {
+  let msg = '';
+  change(() => {
+    if (h.t === 'w') {
+      const orphans = net.wires.filter(w => w.from === h.id); orphans.forEach(w => w.from = null);
+      net.parts = net.parts.filter(q => q.on !== h.id && !(isGate2(q) && (q.a.on === h.id || q.b.on === h.id))); net.wires = net.wires.filter(w => w.id !== h.id);
+      msg = 'Borrado' + (orphans.length ? `. ${orphans.length === 1 ? 'Un alambre quedó' : orphans.length + ' alambres quedaron'} sin conexión` : '');
+    } else if (h.t === 'e') { net.wires.forEach(w => { if (w.from === h.id) w.from = null; }); net.energizers = net.energizers.filter(e => e.id !== h.id); msg = 'Energizador borrado'; }
+    else { net.parts = net.parts.filter(q => q.id !== h.id); msg = 'Borrado'; }
+  });
+  sel = null; setMode('idle'); snack(msg, true);
+}
+
+/* ---------- menú, ayuda y significado ---------- */
+const menu = $('menu');
+let photoOn = true, resetArm = false;
+function openMenu() {
+  menu.hidden = false; $('menuBtn').setAttribute('aria-expanded', 'true'); menu.textContent = '';
+  const B = (ic, label, fn, cls) => { const b = document.createElement('button'); b.type = 'button'; b.innerHTML = IC[ic] + `<span>${esc(label)}</span>`; if (cls) b.className = cls; b.onclick = fn; menu.appendChild(b); return b; };
+  B('help', 'Cómo se usa', () => { closeMenu(); showIntro(0); });
+  B('eye', '¿Qué es cada cosa?', () => { closeMenu(); showLegend(); });
+  B('fit', 'Ver todo el rancho', () => { fit(); closeMenu(); });
+  B('ask', showQs ? 'Ocultar las preguntas en el mapa' : 'Mostrar las preguntas en el mapa', () => { showQs = !showQs; try { localStorage.setItem('cerco-ver-preguntas', showQs ? '1' : '0'); } catch (e) {} closeMenu(); render(); snack(showQs ? 'Preguntas visibles en el mapa' : 'Preguntas ocultas. Siguen en el botón «preguntas»'); });
+  B('eye', photoOn ? 'Ocultar la foto' : 'Mostrar la foto', () => { photoOn = !photoOn; $('photo').style.opacity = photoOn ? 1 : 0.15; closeMenu(); });
+  if (redoSt.length) B('redo', 'Rehacer', () => { closeMenu(); redo(); });
+  B('copy', 'Copiar todo para Claude', async () => {
+    const txt = JSON.stringify(net);
+    try { await navigator.clipboard.writeText(txt); closeMenu(); snack('Copiado. Pégalo en el chat con Claude'); }
+    catch (e) { const ta = document.createElement('textarea'); ta.readOnly = true; ta.id = 'copy-out'; ta.value = txt; menu.appendChild(ta); ta.focus(); ta.select(); }
+  });
+  B('reset', resetArm ? 'Toca otra vez para confirmar' : 'Volver a la versión de Claude', () => {
+    if (!resetArm) { resetArm = true; openMenu(); return; }
+    resetArm = false; change(() => { net = JSON.parse(JSON.stringify(BASE)); }); sel = null; closeMenu(); setMode('idle'); snack('Volviste a la versión de Claude', true);
+  }, 'danger');
+}
+function closeMenu() { menu.hidden = true; resetArm = false; $('menuBtn').setAttribute('aria-expanded', 'false'); }
+$('menuBtn').onclick = () => menu.hidden ? openMenu() : closeMenu();
+document.addEventListener('pointerdown', e => { if (!menu.hidden && !menu.contains(e.target) && !e.target.closest('#menuBtn')) closeMenu(); });
+
+const modal = $('modal');
+function askYesNo(a) {   // pregunta sí/no grande; "no" (o Esc) deja todo como está
+  modal.hidden = false;
+  modal.innerHTML = `<div class="mcard" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">${esc(a.title)}</h2><p>${esc(a.text)}</p>
+    <button class="b go huge" id="myes" type="button">${IC.check}${esc(a.yes)}</button><button class="b ghost" id="mno" type="button">${esc(a.no)}</button></div>`;
+  const closeM = () => { modal.hidden = true; modal.textContent = ''; };
+  $('myes').onclick = () => { closeM(); change(a.fn); renderDock(); buzz(); snack(a.done, true); };
+  $('mno').onclick = () => { closeM(); if (a.noFn) { change(a.noFn); renderDock(); } snack('Quedaron separados'); };
+  $('myes').focus();
+}
+const INTRO = [
+  ['Este es tu cerco', 'Lo blanco y lo azul tienen corriente. Lo gris punteado no tiene. Las flechas naranjas dicen hacia dónde va la corriente.',
+   '<svg viewBox="0 0 300 120"><polyline points="20,90 110,40 200,80" fill="none" stroke="#000" stroke-opacity=".6" stroke-width="7" stroke-linecap="round"/><polyline points="20,90 110,40 200,80" fill="none" stroke="#FFF1C9" stroke-width="4" stroke-linecap="round"/><polyline points="200,80 280,40" fill="none" stroke="#9aa29c" stroke-width="4" stroke-dasharray="7 7" stroke-linecap="round"/><path d="M58 63 70 67 62 76" fill="none" stroke="#FF9A3C" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" transform="rotate(-30 64 68)"/><path d="M150 54 162 60 152 68" fill="none" stroke="#FF9A3C" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round" transform="rotate(25 156 60)"/><g transform="translate(200 80)"><rect x="-12" y="-8" width="24" height="16" rx="4" fill="#2a0f0d" stroke="#FF5147" stroke-width="2"/><path d="M-7 3 L6 -7" stroke="#FF5147" stroke-width="3" stroke-linecap="round"/></g></svg>'],
+  [MOUSE ? 'Haz clic para ver y cambiar' : 'Toca para ver y cambiar', MOUSE ? 'Haz clic en cualquier switch, alambre o puerta. A la derecha te sale qué es y botones grandes para cambiarlo, moverlo o borrarlo. Si pasas el mouse encima, te dice su nombre.' : 'Toca cualquier switch, alambre o puerta. Abajo te sale qué es y botones grandes para cambiarlo, moverlo o borrarlo.',
+   '<svg viewBox="0 0 300 120"><polyline points="30,80 270,80" fill="none" stroke="#FFF1C9" stroke-width="4"/><g transform="translate(150 80)"><circle r="22" fill="none" stroke="#FFC93C" stroke-width="3"/><rect x="-12" y="-8" width="24" height="16" rx="4" fill="#E5352B" stroke="#fff" stroke-width="2"/><path d="M-7 0H7" stroke="#fff" stroke-width="3" stroke-linecap="round"/></g><path d="M170 40c8 6 10 16 6 26l-4 10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/><circle cx="168" cy="34" r="9" fill="#fff" opacity=".9"/></svg>'],
+  [MOUSE ? 'Agrega con un clic' : 'Agrega con la mira', MOUSE ? 'Usa el botón amarillo «+» de la izquierda del mapa y elige qué. Luego haz clic en el mapa donde va. Un círculo verde te avisa que quedó sobre un alambre.' : 'Toca el botón amarillo «+» del mapa y elige qué. Luego mueve el mapa con el dedo hasta que la mira quede en el lugar y toca el botón amarillo.',
+   '<svg viewBox="0 0 300 120"><polyline points="20,95 280,30" fill="none" stroke="#FFF1C9" stroke-width="4"/><g transform="translate(150 62)"><circle r="18" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="5"/><circle r="18" fill="none" stroke="#fff" stroke-width="2.5"/><path d="M0 -34V-22M0 22V34M-34 0H-22M22 0H34" stroke="#fff" stroke-width="3" stroke-linecap="round"/><circle r="10" fill="none" stroke="#3DDC6E" stroke-width="3.5"/></g></svg>'],
+  ['Si te equivocas, no pasa nada', MOUSE ? 'El botón «Deshacer» de arriba (o Ctrl+Z) regresa el último cambio. La tecla Esc cancela lo que estás haciendo. Todo se guarda solo y Claude lo puede ver.' : 'El botón «Deshacer» de arriba regresa el último cambio. Todo se guarda solo y Claude lo puede ver.',
+   '<svg viewBox="0 0 300 120"><g transform="translate(150 60)" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><path d="M-18 6-34-10l16-16"/><path d="M-34-10h36a22 22 0 0 1 0 44h-10"/></g></svg>']
+];
+function showIntro(i) {
+  const [t, p, art] = INTRO[i], last = i === INTRO.length - 1;
+  modal.hidden = false;
+  modal.innerHTML = `<div class="mcard" role="dialog" aria-modal="true" aria-labelledby="mt"><div class="illus">${art}</div><h2 id="mt">${t}</h2><p>${p}</p>
+    <div class="dots">${INTRO.map((_, j) => `<i class="${j === i ? 'on' : ''}"></i>`).join('')}</div>
+    <div class="btns"><button class="b ghost" id="mskip" type="button">${last ? 'Atrás' : 'Saltar'}</button><button class="b pri huge" id="mnext" type="button">${last ? 'Empezar' : 'Siguiente'}</button></div></div>`;
+  const done = () => { modal.hidden = true; modal.textContent = ''; try { localStorage.setItem(LS_INTRO, '1'); } catch (e) {} };
+  $('mnext').onclick = () => last ? done() : showIntro(i + 1);
+  $('mskip').onclick = () => last ? showIntro(i - 1) : done();
+  $('mnext').focus();
+}
+function showLegend() {
+  const row = (art, txt) => `<li><svg viewBox="0 0 44 26">${art}</svg><span>${txt}</span></li>`;
+  modal.hidden = false;
+  modal.innerHTML = `<div class="mcard" role="dialog" aria-modal="true" aria-labelledby="mt"><h2 id="mt">¿Qué es cada cosa?</h2><ul class="legend">
+    ${row('<path d="M4 13H40" stroke="#FFF1C9" stroke-width="3.5"/>', 'Alambre con corriente (circuito interior)')}
+    ${row('<path d="M4 13H40" stroke="#6FE3EE" stroke-width="4"/>', 'Alambre del perímetro, con su propio energizador')}
+    ${row('<path d="M4 13H40" stroke="#9aa29c" stroke-width="3.5" stroke-dasharray="5 4"/>', 'Alambre sin corriente')}
+    ${row('<path d="M4 13H40" stroke="#050706" stroke-width="4.5"/><path d="M4 13H40" stroke="#D9B38C" stroke-width="2.2"/><path d="M9 9.5l4 7M13 9.5l-4 7M20 9.5l4 7M24 9.5l-4 7M31 9.5l4 7M35 9.5l-4 7" stroke="#D9B38C" stroke-width="1.8" stroke-linecap="round"/>', 'Cerca sin corriente: púas u otro alambre (casas, corrales)')}
+    ${row('<path d="M18 7 25 13 18 19" fill="none" stroke="#FF9A3C" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>', 'Hacia dónde va la corriente')}
+    ${row('<rect x="12" y="6" width="20" height="14" rx="4" fill="#E5352B" stroke="#fff" stroke-width="1.5"/><path d="M16 13H28" stroke="#fff" stroke-width="2.5" stroke-linecap="round"/>', 'Switch cerrado: pasa la corriente')}
+    ${row('<rect x="12" y="6" width="20" height="14" rx="4" fill="#2a0f0d" stroke="#FF5147" stroke-width="1.5"/><path d="M16 16 27 9" stroke="#FF5147" stroke-width="2.5" stroke-linecap="round"/>', 'Switch abierto: corta lo que sigue')}
+    ${row('<path d="M2 13H12M32 13H42" stroke="#FFF1C9" stroke-width="3"/><path d="M12 13H32" stroke="#1F6FE5" stroke-width="5"/><circle cx="12" cy="13" r="3" fill="#0b0b0b" stroke="#fff"/><circle cx="32" cy="13" r="3" fill="#0b0b0b" stroke="#fff"/><rect x="15" y="9" width="14" height="8" rx="4" fill="#1F6FE5" stroke="#fff" stroke-width="1.2"/>', 'Puerta (manija): va de un alambre a otro; por ahí no pasa la corriente')}
+    ${row('<path d="M2 13H12M32 13H42" stroke="#FFF1C9" stroke-width="3"/><path d="M12 13H32" stroke="#fff" stroke-width="5"/><rect x="15" y="9" width="14" height="8" rx="4" fill="#fff" stroke="#141414" stroke-width="1.2"/>', 'Puerta con corriente (blanca): como un switch en puerta. Cerrada pasa la corriente; abierta la corta')}
+    ${row('<path d="M2 21H12M32 21H42" stroke="#FFF1C9" stroke-width="2.5"/><path d="M12 21Q22 -1 32 21" fill="none" stroke="#1a1300" stroke-width="6" stroke-linecap="round"/><path d="M12 21Q22 -1 32 21" fill="none" stroke="#FFD23F" stroke-width="3.5" stroke-linecap="round"/><circle cx="12" cy="21" r="3" fill="#FFD23F" stroke="#1a1300"/><circle cx="32" cy="21" r="3" fill="#FFD23F" stroke="#1a1300"/><path d="M20 7.5 23.5 10 20 12.5" fill="none" stroke="#FF9A3C" stroke-width="2" stroke-linecap="round"/>', 'Cable puente: pasa la corriente de un alambre a otro (la flecha dice hacia dónde)')}
+    ${row('<circle cx="22" cy="13" r="10" fill="#141414" stroke="#FFF1C9" stroke-width="2"/><path d="M23.5 6 17.5 14.5 21.5 14.5 20 20 26.5 11.5 22.5 11.5Z" fill="#FFD23F"/>', 'Energizador (de donde sale la corriente)')}
+    ${row('<path d="M4 13H24" stroke="#FFF1C9" stroke-width="3"/><path d="M24 13H40" stroke="#9aa29c" stroke-width="3" stroke-dasharray="4 3"/><circle cx="24" cy="13" r="4.6" fill="#0b0b0b"/>', 'Fin de línea: aquí termina la corriente. Si el alambre llega a otro, va pegado al cruce. Lo puedes poner con «Agregar algo»')}
+    ${row('<rect x="10" y="3" width="24" height="16" rx="3" fill="#9B6BFF" stroke="#111"/><text x="22" y="15" text-anchor="middle" font-size="10" font-weight="700" fill="#111">?3</text>', 'Pregunta de Claude (verde cuando ya contestaste)')}
+  </ul><button class="b pri huge" id="mok" type="button">Entendido</button></div>`;
+  $('mok').onclick = () => { modal.hidden = true; modal.textContent = ''; };
+  $('mok').focus();
+}
+modal.addEventListener('click', e => { if (e.target === modal) { modal.hidden = true; modal.textContent = ''; } });
+document.addEventListener('keydown', e => { if (e.key === 'Escape') { if (!modal.hidden) { modal.hidden = true; modal.textContent = ''; } else if (!menu.hidden) closeMenu(); } });
+
+/* ---------- arranque ---------- */
+// la puerta blanca siempre se une sola: el alambre que empieza en su punta recibe la corriente de ella
+// (salvo que ya esté bien pegado a otra cosa que sí lo toca)
+// regla: el que pasa la corriente es el alambre que lleva el flujo hacia ese punto.
+// Si un alambre deja de tocar a quien le daba corriente (porque lo moviste), la toma de quien de verdad le llega ahí.
+function isFar(w) { const e = EN(w.from); if (e) return dist(w.pts[0], [e.x, e.y]) > TOUCH_E; const pw = W(w.from); return !pw || project(w.pts[0], pw.pts).d > TOUCH_W; }
+function feederAt(w) {
+  const p = w.pts[0], desc = descendants(w.id);
+  const e = net.energizers.find(e => dist(p, [e.x, e.y]) <= TOUCH_E); if (e) return e.id;
+  let best = null;
+  net.wires.forEach(o => {
+    if (o === w || desc.has(o.id) || isBarb(o)) return;
+    if (dist(p, o.pts[o.pts.length - 1]) <= TOUCH_W) { if (!best || best.r > 0) best = {id: o.id, r: 0}; return; }   // ahí llega su final: su flujo sigue en w
+    if (o.kind === 'cable') return;
+    const q = project(p, o.pts); if (q.d <= TOUCH_W && q.s > TOUCH_W && !best) best = {id: o.id, r: 1};   // pasa por ahí: w es una rama
+  });
+  return best ? best.id : null;
+}
+let REPARENT_SKIP = null;   // el alambre al que le estás moviendo el inicio: ese se pregunta, no se conecta solo
+function reparentOrphans() {
+  let n = 0;
+  for (let round = 0; round < 3; round++) net.wires.forEach(w => {
+    if (!w.from || isBarb(w) || w.id === REPARENT_SKIP || !isFar(w)) return;
+    const f = feederAt(w); if (f && f !== w.from) { w.from = f; n++; }
+  });
+  return n;
+}
+function linkEgates() {
+  let n = 0;
+  net.wires.forEach(g => {
+    if (!isEgate(g)) return; const e = g.pts[g.pts.length - 1];
+    net.wires.forEach(o => {
+      if (o === g || o.kind === 'cable' || isBarb(o) || o.from === g.id || dist(o.pts[0], e) > TOUCH_W) return;
+      const f = o.from, fe = f && EN(f), fw = f && W(f);
+      const touching = fe ? dist(o.pts[0], [fe.x, fe.y]) <= TOUCH_E : fw ? project(o.pts[0], fw.pts).d <= TOUCH_W : false;
+      if (touching && f !== g.from) return;
+      if (descendants(o.id).has(g.id)) return;
+      o.from = g.id; o.pts[0] = e.slice(); n++;
+    });
+  });
+  return n;
+}
+function renameCables() { net.wires.forEach(w => { if (w.kind === 'cable' && w.name === 'Cable sobre puerta') w.name = 'Cable puente'; }); }
+function loadLocal() { try { const j = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); return j && j.net && j.net.wires ? j : null; } catch (e) { return null; } }
+async function boot() {
+  initStatic();
+  const local = loadLocal();
+  if (local) net = local.net;
+  renameCables(); linkEgates(); reparentOrphans();
+  fit(); setMode('idle');
+  window.addEventListener('resize', () => { if (needFit) { fit(); render(); } });
+  let seen = false; try { seen = !!localStorage.getItem(LS_INTRO); } catch (e) {}
+  if (!seen) showIntro(0);
+  setSave('Conectando…');
+  let db = null;
+  try { db = window.claude && window.claude.use ? await Promise.race([window.claude.use('db'), new Promise(r => setTimeout(() => r(null), 8000))]) : null; } catch (e) { db = null; }
+  if (!db) { setSave(local ? 'Guardado en el teléfono' : 'Sin conexión', 'warn'); return; }
+  docRef = db.doc(DOC_PATH);
+  try {
+    const snap = await Promise.race([docRef.get(), new Promise((_, j) => setTimeout(() => j({code: 'timeout'}), 10000))]);
+    const remote = snap.exists ? snap.data() : null;
+    if (remote && remote.net && (!local || (remote.savedAt || 0) >= (local.savedAt || 0) - 2000)) {
+      net = JSON.parse(JSON.stringify(remote.net)); renameCables(); const fixed = linkEgates() + reparentOrphans(); lsWrite(); if (fixed) queueSave(); if (sel && !exists(sel)) sel = null; render(); renderDock(); setSave('Guardado', 'ok');
+    } else if (local) doSave();
+    else setSave('Guardado', 'ok');
+  } catch (e) { setSave('Guardado solo en el teléfono', 'warn'); }
+}
+boot();
+</script>

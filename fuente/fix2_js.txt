@@ -1,0 +1,105 @@
+/* ---------- correcciones (base de datos del mapa; si no hay, se guardan en este dispositivo) ---------- */
+const TIPOS=['Línea que sobra','Falta una línea','Línea en otro lugar','Conexión incorrecta','Switch','Cable sobre puerta','Puerta','Sentido del flujo','Energizador','Otro'];
+const gPins=$('g-pins'),PINS=[];
+const markBtn=$('mark'),markBtn2=$('mark2'),form=$('fix-form'),fTipo=$('fix-tipo'),fNota=$('fix-nota'),fNear=$('fix-near'),fMsg=$('fix-msg'),
+  fSave=$('fix-save'),fTitle=$('fix-title'),fixList=$('fix-list'),fixStatus=$('fix-status'),copyBtn=$('fix-copy'),copyOut=$('fix-copy-out');
+fTipo.innerHTML=TIPOS.map(t=>`<option>${t}</option>`).join('');
+let DB=null,LOCAL=false,notes=[],draft=null,editing=null,readOnly=false,confirmDel=null,statusHold=0;
+function segDist(x,y,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],q=dx*dx+dy*dy||1;let t=((x-a[0])*dx+(y-a[1])*dy)/q;t=Math.max(0,Math.min(1,t));return Math.hypot(a[0]+t*dx-x,a[1]+t*dy-y);}
+function nearest(x,y){let best=null;const R=14/Math.max(1,view.s*.8);
+  SWITCHES.forEach(sw=>{const d=Math.hypot(sw.pos[0]-x,sw.pos[1]-y);if(d<R*1.2&&(!best||d<best.d))best={d,ref:sw.id,label:'Switch '+sw.id+' ('+sw.name+')'};});
+  if(best)return best;
+  EN.forEach(e=>{const d=Math.hypot(e.pos[0]-x,e.pos[1]-y);if(d<R*1.2&&(!best||d<best.d))best={d,ref:e.id,label:e.name};});if(best)return best;
+  NET.gates.forEach(([gx,gy],i)=>{const d=Math.hypot(gx-x,gy-y);if(d<R*.8&&(!best||d<best.d))best={d,ref:'G'+(i+1),label:'Puerta'};});if(best)return best;
+  ALL.forEach(k=>{const p=L[k].pts;for(let i=0;i<p.length-1;i++){const d=segDist(x,y,p[i],p[i+1]);if(d<R&&(!best||d<best.d))best={d,ref:k,label:'Línea: '+L[k].name};}});
+  return best;}
+const nextN=()=>notes.reduce((m,n)=>Math.max(m,+n.n||0),0)+1;
+function pinGlyph(n,kind){const g=el('g',{class:'pin'},gPins);
+  const fill=kind==='draft'?'#fff':kind==='resuelto'?'#6B746E':'#E0338A';
+  el('path',{d:'M0 0C-3-6-10-9-10-17a10 10 0 1 1 20 0c0 8-7 11-10 17z',fill,stroke:kind==='draft'?'#E0338A':'#fff','stroke-width':2},g);
+  el('text',{y:-13,'text-anchor':'middle',class:'pin-n',fill:kind==='draft'?'#B01F68':'#fff'},g).textContent=n;return g;}
+function scalePins(){PINS.forEach(o=>o.g.setAttribute('transform',`translate(${o.x} ${o.y}) scale(${SYM_K.toFixed(4)})`));}
+function drawPins(){gPins.replaceChildren();PINS.length=0;
+  notes.forEach(nd=>{if(editing&&editing.id===nd.id)return;const g=pinGlyph(nd.n,nd.estado);const ti=document.createElementNS(NS,'title');ti.textContent=nd.n+'. '+nd.tipo+(nd.nota?': '+nd.nota:'');g.prepend(ti);
+    PINS.push({g,x:nd.x,y:nd.y});g.addEventListener('click',e=>{e.stopPropagation();if(drag.moved)return;focusNote(nd.id,false);});});
+  if(draft){const g=pinGlyph(editing?editing.n:nextN(),'draft');PINS.push({g,x:draft.x,y:draft.y});}
+  scalePins();}
+function setMark(on){markMode=on&&!!DB&&!readOnly;svg.classList.toggle('marking',markMode);
+  [markBtn,markBtn2].forEach(b=>b.setAttribute('aria-pressed',markMode?'true':'false'));
+  $('mark-txt').textContent=markMode?'Terminar':'Marcar corrección';markBtn2.textContent=markMode?'Terminar de marcar':'Marcar corrección';
+  const h=$('hint');if(markMode){h.textContent='Toca el lugar del mapa donde hay un error.';h.hidden=false;}else{h.hidden=true;closeForm();}}
+function openForm(x,y){const same=editing&&x===editing.x&&y===editing.y&&editing.cerca;draft={x,y,near:same?{label:editing.cerca,ref:editing.ref}:nearest(x,y)};
+  fNear.textContent=draft.near?'Cerca de: '+draft.near.label:'Sin cerca, switch ni puerta justo aquí';
+  if(form.hidden){fMsg.textContent='';if(!editing){fTipo.value=TIPOS[0];fNota.value='';}}
+  fTitle.textContent=editing?'Editar corrección '+editing.n:'Corrección '+nextN();
+  form.hidden=false;$('hint').hidden=true;drawPins();setTimeout(()=>fNota.focus({preventScroll:true}),30);}
+function closeForm(){form.hidden=true;draft=null;editing=null;fSave.disabled=false;drawPins();if(markMode){$('hint').textContent='Toca el lugar del mapa donde hay un error.';$('hint').hidden=false;}}
+$('fix-cancel').addEventListener('click',closeForm);
+function flashStatus(msg){fixStatus.textContent=msg;statusHold=Date.now()+2500;setTimeout(()=>{if(Date.now()>=statusHold)statusIdle();},2600);}
+form.addEventListener('submit',async e=>{e.preventDefault();if(!DB||!draft)return;
+  const nota=fNota.value.trim();if(!nota){fMsg.textContent='Escribe qué está mal.';fNota.focus();return;}
+  const body={n:editing?editing.n:nextN(),x:+draft.x.toFixed(1),y:+draft.y.toFixed(1),tipo:fTipo.value,nota,
+    cerca:draft.near?draft.near.label:'',ref:draft.near?draft.near.ref:'',estado:editing?(editing.estado||'pendiente'):'pendiente',
+    creado:editing?(editing.creado||new Date().toISOString()):new Date().toISOString()};
+  fSave.disabled=true;fMsg.textContent='Guardando…';
+  const slow=setTimeout(()=>{fMsg.textContent='Está tardando. Si no termina, copia tu nota y mándamela por el chat.';fSave.disabled=false;},8000);
+  try{if(editing)await DB.doc('correcciones/'+editing.id).set(body);else await DB.collection('correcciones').add(body);
+    clearTimeout(slow);closeForm();flashStatus(`Corrección ${body.n} guardada.`);}
+  catch(err){clearTimeout(slow);fSave.disabled=false;const c=err&&err.code;
+    if(c==='invalid_argument'){readOnly=true;fMsg.textContent='Tu cuenta solo puede ver este mapa, no guardar correcciones.';}
+    else if(c==='quota_exceeded')fMsg.textContent='Se llenó el espacio de correcciones. Borra algunas ya resueltas.';
+    else fMsg.textContent='No se pudo guardar. Revisa tu conexión e inténtalo otra vez.';}});
+svg.addEventListener('click',e=>{if(!markMode)return;if(e.target.closest&&e.target.closest('.pin'))return;e.stopPropagation();e.preventDefault();if(drag.moved)return;
+  const p=toSvg(e.clientX,e.clientY);openForm((p.x-view.tx)/view.s,(p.y-view.ty)/view.s);},true);
+[markBtn,markBtn2].forEach(b=>b.addEventListener('click',()=>setMark(!markMode)));
+function focusNote(id,zoom=true){const nd=notes.find(n=>n.id===id);if(!nd)return;if(zoom)focusAt(nd.x,nd.y,3);
+  document.querySelectorAll('.fix-row').forEach(r=>r.classList.toggle('hl',r.dataset.id===id));
+  const r=document.querySelector(`.fix-row[data-id="${id}"]`);if(r&&!zoom)r.scrollIntoView({block:'nearest',behavior:'smooth'});}
+function renderNotes(){fixList.replaceChildren();copyBtn.hidden=!notes.length;if(!notes.length)copyOut.hidden=true;
+  notes.forEach(nd=>{const li=document.createElement('li');li.className='fix-row'+(nd.estado==='resuelto'?' done':'');li.dataset.id=nd.id;
+    const tag=document.createElement('button');tag.type='button';tag.className='pin-tag';tag.textContent=nd.n;tag.setAttribute('aria-label','Ver corrección '+nd.n+' en el mapa');
+    tag.addEventListener('click',()=>focusNote(nd.id));
+    const tx=document.createElement('div');tx.className='fix-txt';
+    const b=document.createElement('b');b.textContent=(nd.tipo||'Corrección')+(nd.estado==='resuelto'?' · resuelta':'');tx.appendChild(b);
+    if(nd.cerca){const s=document.createElement('div');s.className='near';s.textContent=nd.cerca;tx.appendChild(s);}
+    const p=document.createElement('p');p.textContent=nd.nota||'';tx.appendChild(p);
+    const acts=document.createElement('div');acts.className='fix-row-acts';
+    if(DB&&!readOnly){
+      if(confirmDel===nd.id){const q=document.createElement('span');q.textContent='¿Borrar la '+nd.n+'?';
+        const y=document.createElement('button');y.type='button';y.className='danger';y.textContent='Sí, borrar';
+        y.addEventListener('click',async()=>{try{await DB.doc('correcciones/'+nd.id).delete();confirmDel=null;flashStatus(`Corrección ${nd.n} borrada.`);}catch(err){flashStatus('No se pudo borrar. Inténtalo otra vez.');}});
+        const no=document.createElement('button');no.type='button';no.textContent='No';no.addEventListener('click',()=>{confirmDel=null;renderNotes();});acts.append(q,y,no);}
+      else{const ed=document.createElement('button');ed.type='button';ed.textContent='Editar';
+        ed.addEventListener('click',()=>{if(!markMode)setMark(true);form.hidden=true;editing=nd;fTipo.value=TIPOS.includes(nd.tipo)?nd.tipo:'Otro';fNota.value=nd.nota||'';focusNote(nd.id);openForm(nd.x,nd.y);});
+        const del=document.createElement('button');del.type='button';del.className='danger';del.textContent='Borrar';del.addEventListener('click',()=>{confirmDel=nd.id;renderNotes();});
+        acts.append(ed,del);}}
+    li.append(tag,tx,acts);fixList.appendChild(li);});
+  drawPins();}
+function statusIdle(){if(Date.now()<statusHold)return;const pend=notes.filter(n=>n.estado!=='resuelto').length;
+  const where=LOCAL?' Guardadas solo en este dispositivo: usa «Copiar para Claude» y pégalas en el chat.':'';
+  fixStatus.textContent=notes.length?`${notes.length} ${notes.length===1?'corrección':'correcciones'}${pend!==notes.length?` · ${pend} pendientes`:''}.${where}`:'Aún no hay correcciones. Toca «Marcar corrección» y luego el lugar del mapa.';}
+copyBtn.addEventListener('click',async()=>{
+  const txt='Correcciones del mapa del cerco:\n'+notes.map(n=>`${n.n}. [${n.tipo}] ${n.nota}${n.cerca?' (cerca de: '+n.cerca+')':''} — punto x=${n.x}, y=${n.y}${n.estado==='resuelto'?' (resuelta)':''}`).join('\n');
+  try{await navigator.clipboard.writeText(txt);flashStatus('Copiado. Pégalo en el chat.');}
+  catch(e){copyOut.value=txt;copyOut.hidden=false;copyOut.focus();copyOut.select();flashStatus('Selecciona el texto, cópialo y pégalo en el chat.');}});
+/* respaldo local con la misma forma que la base de datos */
+function localStore(){const KEY='cerco-correcciones-v1';let docs={},subs=[],seq=0;
+  try{docs=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){docs={};}
+  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(docs));}catch(e){}};
+  const snap=()=>({metadata:{fromCache:false},docs:Object.keys(docs).map(id=>({id,data:()=>docs[id]}))});
+  const fire=()=>subs.forEach(f=>f(snap()));
+  return {collection:()=>({onSnapshot(n){subs.push(n);setTimeout(()=>n(snap()),0);return()=>{};},
+      add:async b=>{const id='l'+Date.now().toString(36)+(seq++);docs[id]=b;save();fire();return {id};}}),
+    doc:p=>{const id=p.split('/')[1];return {set:async b=>{docs[id]=b;save();fire();},delete:async()=>{delete docs[id];save();fire();}};}};}
+function startNotes(db){if(!db){db=localStore();LOCAL=true;}DB=db;
+  [markBtn,markBtn2].forEach(b=>b.disabled=false);
+  const timer=setTimeout(()=>{fixStatus.textContent='Todavía no se pueden cargar las correcciones guardadas; puede que no estén al día.';},10000);
+  db.collection('correcciones').onSnapshot(snap=>{if(!snap.metadata.fromCache)clearTimeout(timer);
+      notes=snap.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>(a.n||0)-(b.n||0));
+      if(editing&&!notes.find(n=>n.id===editing.id))closeForm();
+      renderNotes();statusIdle();},
+    err=>{clearTimeout(timer);fixStatus.textContent='No se pudieron cargar las correcciones. Vuelve a abrir el mapa más tarde.';});}
+(async()=>{let db=null;
+  try{const use=window.claude&&window.claude.use?window.claude.use('db'):null;
+    db=use?await Promise.race([use,new Promise(r=>setTimeout(()=>r(null),4000))]):null;}catch(e){db=null;}
+  startNotes(db);})();

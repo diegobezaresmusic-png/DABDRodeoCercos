@@ -1,0 +1,47 @@
+{
+  "name": "Cerco del Rancho",
+  "short_name": "Cerco",
+  "lang": "es",
+  "description": "Mapa y editor del cerco eléctrico del rancho.",
+  "id": "/",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#15201A",
+  "theme_color": "#15201A",
+  "icons": [
+    {
+      "src": "/iconos/icono-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/iconos/icono-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    },
+    {
+      "src": "/iconos/icono-maskable-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/iconos/icono-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ver el mapa",
+      "url": "/mapa/"
+    },
+    {
+      "name": "Editar el cerco",
+      "url": "/editor/"
+    }
+  ]
+}

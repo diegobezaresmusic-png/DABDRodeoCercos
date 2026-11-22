@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#15201A">
+<title>Cerco del Rancho</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/iconos/icono-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/iconos/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Cerco">
+<style>
+:root{--bg:#EEF2EE;--panel:#fff;--fg:#15201A;--muted:#55645A;--rule:#CBD5CC;--accent:#F2B705;--accent-fg:#1D1600;color-scheme:light}
+@media (prefers-color-scheme:dark){:root{--bg:#0F1311;--panel:#1A201C;--fg:#EEF2EC;--muted:#A3AFA6;--rule:#35403A;--accent:#FFC93C;--accent-fg:#1B1503;color-scheme:dark}}
+*{box-sizing:border-box}
+body{margin:0;min-height:100dvh;background:var(--bg);color:var(--fg);font:16px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;
+  display:grid;place-items:center;padding:max(24px,env(safe-area-inset-top)) 16px max(24px,env(safe-area-inset-bottom))}
+main{width:100%;max-width:440px;display:grid;gap:14px}
+h1{margin:0 0 4px;font-size:26px;display:flex;align-items:center;gap:10px}
+h1 img{width:40px;height:40px;border-radius:10px}
+p{margin:0;color:var(--muted)}
+a.op{display:block;padding:18px 18px;border-radius:14px;background:var(--panel);border:1px solid var(--rule);color:inherit;text-decoration:none}
+a.op strong{display:block;font-size:19px}
+a.op.pri{background:var(--accent);color:var(--accent-fg);border-color:transparent}
+a.op.pri span{color:inherit;opacity:.8}
+a.op span{color:var(--muted);font-size:14px}
+a.op:focus-visible{outline:3px solid var(--accent);outline-offset:3px}
+#instalar{font-size:14px}
+.cuenta{border-top:1px solid var(--rule);padding-top:14px;display:grid;gap:10px}
+.cuenta h2{margin:0;font-size:16px}
+.cuenta form{display:grid;gap:8px}
+.cuenta input{font:inherit;padding:12px;border-radius:10px;border:1px solid var(--rule);background:var(--panel);color:var(--fg)}
+.cuenta button{font:600 16px system-ui,sans-serif;padding:12px;border-radius:10px;border:1px solid var(--rule);background:var(--panel);color:var(--fg);cursor:pointer}
+.cuenta button.pri{background:var(--accent);color:var(--accent-fg);border-color:transparent}
+.cuenta .err{color:#D3261B}
+@media (prefers-color-scheme:dark){.cuenta .err{color:#FF6B5E}}
+</style>
+<script src="/config.js"></script>
+<script src="/nube.js"></script>
+</head>
+<body>
+<main>
+  <h1><img src="/iconos/icono-192.png" alt="">Cerco del Rancho</h1>
+  <p>Elige qué quieres abrir.</p>
+  <a class="op pri" href="/mapa/"><strong>Ver el mapa</strong><span>Circuitos, switches y correcciones.</span></a>
+  <a class="op" href="/editor/"><strong>Editar el cerco</strong><span>Mover tramos, puertas y energizadores.</span></a>
+  <p id="instalar"></p>
+  <section class="cuenta" id="cuenta" hidden>
+    <h2>Sincronizar entre dispositivos</h2>
+    <p id="c-estado">Revisando…</p>
+    <form id="c-form" hidden>
+      <input id="c-correo" type="email" autocomplete="username" placeholder="Correo" required>
+      <input id="c-clave" type="password" autocomplete="current-password" placeholder="Contraseña" required>
+      <button class="pri" type="submit">Iniciar sesión</button>
+      <p class="err" id="c-err" role="alert"></p>
+    </form>
+    <button type="button" id="c-salir" hidden>Cerrar sesión</button>
+  </section>
+</main>
+<script>
+const ua = navigator.userAgent, ios = /iPhone|iPad|iPod/.test(ua) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const ya = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+const t = document.getElementById('instalar');
+if (!ya) t.textContent = ios
+  ? 'Para instalarla: en Safari toca Compartir y luego "Agregar a pantalla de inicio".'
+  : 'Para instalarla: en Chrome abre el menú ⋮ y toca "Instalar app".';
+if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {}));
+(async () => {
+  const N = window.CercoNube; if (!N || !N.configurada) return;
+  const $ = id => document.getElementById(id);
+  $('cuenta').hidden = false;
+  const pintar = async () => {
+    let s = null; try { s = await N.sesion(); } catch (e) { $('c-estado').textContent = 'Sin conexión. Puedes usar la app; se guardará en este dispositivo.'; return; }
+    $('c-form').hidden = !!s; $('c-salir').hidden = !s;
+    $('c-estado').textContent = s ? 'Sesión iniciada como ' + s.user.email + '. Tus cambios se guardan en la nube.' : 'Sin sesión: los cambios se guardan solo en este dispositivo.';
+  };
+  $('c-form').addEventListener('submit', async e => {
+    e.preventDefault(); $('c-err').textContent = '';
+    try { await N.entrar($('c-correo').value.trim(), $('c-clave').value); $('c-clave').value = ''; }
+    catch (err) { $('c-err').textContent = /Invalid login/i.test(err.message) ? 'Correo o contraseña incorrectos.' : (err.message || 'No se pudo iniciar sesión.'); }
+    pintar();
+  });
+  $('c-salir').addEventListener('click', async () => { await N.salir(); pintar(); });
+  pintar();
+})();
+</script>
+</body>
+</html>

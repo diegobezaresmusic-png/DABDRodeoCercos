@@ -1,0 +1,1 @@
+window.CERCO_NUBE = {};

@@ -1,0 +1,71 @@
+# Cerco del Rancho
+
+Mapa y editor del cerco eléctrico. Se publica como **PWA**: una página web que se instala en Android, iPhone y tabletas sin tiendas, sin Xcode y sin costo.
+
+- **Hosting:** Cloudflare Pages (gratis), en la dirección `…pages.dev`.
+- **Datos compartidos:** Supabase (gratis). Si no está configurado o no hay sesión, todo se guarda en el dispositivo, igual que antes.
+
+## Estructura
+
+| Carpeta | Qué es |
+|---|---|
+| `mapa/`, `editor/` | Las dos apps (generadas desde `fuente/`). |
+| `fuente/` | Plantillas y scripts que generan `mapa/` y `editor/`. |
+| `herramientas/publicar.py` | Arma `publicar/`: envuelve las apps, agrega manifest, íconos, service worker y el conector a Supabase. |
+| `herramientas/web/nube.js` | Conector a Supabase. Mapa y editor lo usan sin cambios en su código. |
+| `publicar/` | **Lo que sube Cloudflare.** Se genera; no editar a mano. |
+| `supabase/migrations/` | Tablas y permisos de la base. |
+| `supabase/alta-dueno.sql` | Te da de alta como dueño del proyecto (una vez). |
+
+## Publicar un cambio
+
+```powershell
+python herramientas/publicar.py
+```
+
+Luego haz commit y push. Cloudflare publica solo en uno o dos minutos.
+
+## Configuración inicial (una sola vez)
+
+### 1. GitHub
+1. Crea un repositorio **privado** (por ejemplo `cerco-rancho`).
+2. Súbelo desde esta carpeta (te ayudo con los comandos).
+
+### 2. Cloudflare Pages
+1. Workers & Pages → Create → Pages → **Connect to Git** → elige el repositorio.
+2. Framework preset: **None**. Build command: *(vacío)*. Build output directory: **`publicar`**.
+3. Deploy. Te da la dirección `https://<nombre>.pages.dev`.
+
+### 3. Supabase
+1. **SQL Editor** → pega y corre `supabase/migrations/20261120000000_inicio.sql`.
+2. **Authentication → Sign In / Providers → Email:** deja Email activado y **desactiva "Allow new users to sign up"**. Así nadie más puede crearse cuenta.
+3. **Authentication → Users → Add user:** crea tu usuario con correo y contraseña (marca "Auto Confirm User").
+4. **SQL Editor** → abre `supabase/alta-dueno.sql`, cambia el correo por el tuyo y córrelo. Debe devolver una fila con `rol = dueno`.
+5. **Authentication → URL Configuration:** en Site URL pon tu dirección `https://<nombre>.pages.dev`.
+6. **Project Settings → API:** copia la **Project URL** y la clave **anon / publishable** (nunca la `service_role` ni `sb_secret_…`).
+7. Copia `config.nube.ejemplo.json` como `config.nube.json`, pega esos dos valores, corre `python herramientas/publicar.py` y sube el cambio.
+
+### 4. Pasar tus datos actuales a la nube
+Tu última versión está en `fuente/editor/guardado-diego-ultimo.json`. Para subirla:
+
+```powershell
+python herramientas/importar.py
+```
+
+Abre `supabase/importar-datos.sql`, pega todo en Supabase → SQL Editor y córrelo. Debe devolver una fila con el número de alambres. Después, al iniciar sesión, cualquier dispositivo baja esa versión.
+
+> Ojo: el editor compara fechas. Si un dispositivo tiene una copia local **más nueva** que la de la nube, la sube y reemplaza la de la nube.
+
+## Instalar en los dispositivos
+
+- **Android (celular o tableta):** abre la dirección en Chrome → menú ⋮ → **Instalar app**.
+- **iPhone / iPad:** abre la dirección en **Safari** → Compartir → **Agregar a pantalla de inicio**.
+- Funciona sin señal con la última versión que se abrió. Los cambios hechos sin señal se quedan en el dispositivo hasta que vuelva la conexión y se abra el editor.
+
+## Usuarios (para después)
+
+Ya está preparado: cada persona necesita un usuario en Supabase y una fila en `miembros` con su rol (`dueno`, `editor` o `lector`). Ver el ejemplo al final de `supabase/alta-dueno.sql`. Cada cambio queda en `documentos_historial` con quién lo hizo.
+
+## Mantenimiento
+
+- El plan gratis de Supabase **pausa el proyecto** si pasa varios días sin uso. Si la app dice "Guardado en el teléfono" en vez de "Guardado", entra a supabase.com y reactívalo.
