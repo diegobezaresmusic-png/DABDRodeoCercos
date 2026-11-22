@@ -24,62 +24,81 @@
   const haySesion = () => { try { return !!localStorage.getItem('cerco-sesion'); } catch (e) { return false; } };
 
   /* ---------- avisos en pantalla (los mismos en todas las secciones) ---------- */
-  const CSS = `.cz-capa{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;background:rgba(5,9,7,.86);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#EEF2EC}
-.cz-caja{display:grid;justify-items:center;gap:14px;max-width:min(86vw,340px);padding:26px 22px;border-radius:18px;background:#15201A;box-shadow:0 12px 40px rgba(0,0,0,.4);text-align:center}
-.cz-caja p{margin:0}.cz-caja small{color:#A3AFA6;font-size:14px}
-.cz-capa{animation:cz-aparece .18s ease-out}
-.cz-botones{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:2px}
-.cz-boton.cz-sec{background:transparent;color:#EEF2EC;border:1px solid #35403A}
-.cz-boton:focus-visible{outline:3px solid #FFC93C;outline-offset:2px}
-@keyframes cz-aparece{from{opacity:0}}
-.cz-giro{width:34px;height:34px;border-radius:50%;border:3.5px solid rgba(255,255,255,.18);border-top-color:#FFC93C;animation:cz-giro .8s linear infinite}
+  const CSS = `.cz-capa{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;padding:16px;background:rgba(5,9,7,.86);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#EEF2EC;animation:cz-aparece .18s ease-out}
+.cz-caja{position:relative;box-sizing:border-box;width:min(100%,360px);display:flex;flex-direction:column;align-items:center;padding:34px 26px 24px;border-radius:22px;background:#1A231E;border:1px solid #2E3A33;box-shadow:0 20px 60px rgba(0,0,0,.5);text-align:center;animation:cz-sube .22s cubic-bezier(.2,.8,.2,1)}
+.cz-icono{width:84px;height:76px;display:grid;place-items:center;margin-bottom:18px}
+.cz-icono svg{width:84px;height:76px;overflow:visible}
+.cz-icono .cz-giro{width:46px;height:46px;border-width:4px}
+.cz-titulo{margin:0 0 10px;font-size:25px;font-weight:750;line-height:1.15;letter-spacing:-.01em}
+.cz-texto{margin:0 0 26px;max-width:290px;color:#A9B5AC;font-size:15.5px;line-height:1.5}
+.cz-boton{flex:none;border:0;border-radius:10px;padding:10px 14px;background:#FFC93C;color:#1B1503;font:700 15px system-ui,sans-serif;cursor:pointer}
+.cz-boton:focus-visible,.cz-cerrar:focus-visible{outline:3px solid #FFC93C;outline-offset:2px}
+.cz-ancho{width:100%;min-height:52px;border-radius:14px;font-size:17px;box-shadow:0 6px 18px rgba(255,201,60,.22)}
+.cz-ancho:disabled{background:#3A463F;color:#A9B5AC;box-shadow:none;cursor:default}
+.cz-cerrar{position:absolute;top:10px;right:10px;width:40px;height:40px;display:grid;place-items:center;border:0;border-radius:12px;background:transparent;color:#7E8B83;cursor:pointer}
+.cz-cerrar:hover{background:rgba(255,255,255,.06);color:#EEF2EC}
+.cz-cerrar svg{width:18px;height:18px}
+.cz-giro{width:34px;height:34px;box-sizing:border-box;border-radius:50%;border:3.5px solid rgba(255,255,255,.16);border-top-color:#FFC93C;animation:cz-giro .8s linear infinite}
 .cz-pastilla{position:fixed;z-index:8999;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 16px);display:flex;gap:10px;align-items:center;max-width:min(92vw,440px);padding:9px 10px 9px 14px;border-radius:14px;background:#15201A;color:#EEF2EC;font:14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.35)}
 .cz-pastilla .cz-giro{width:16px;height:16px;border-width:2.5px;flex:none}
-.cz-boton{flex:none;border:0;border-radius:10px;padding:10px 14px;background:#FFC93C;color:#1B1503;font:700 15px system-ui,sans-serif;cursor:pointer}
 .cz-x{flex:none;border:0;background:none;color:inherit;font-size:20px;line-height:1;padding:4px 6px;cursor:pointer}
 .cz-pastilla.cz-arriba{bottom:auto;top:calc(env(safe-area-inset-top,0px) + 64px)}
 @keyframes cz-giro{to{transform:rotate(360deg)}}
-@media (prefers-reduced-motion:reduce){.cz-giro{animation-duration:2.4s}}`;
+@keyframes cz-aparece{from{opacity:0}}
+@keyframes cz-sube{from{opacity:0;transform:translateY(10px) scale(.97)}}
+@media (prefers-reduced-motion:reduce){.cz-giro{animation-duration:2.4s}.cz-capa,.cz-caja{animation:none}}`;
   function estilos() { if (document.getElementById('cz-estilos')) return; const s = document.createElement('style'); s.id = 'cz-estilos'; s.textContent = CSS; document.head.appendChild(s); }
   const poner = n => { estilos(); (document.body || document.documentElement).appendChild(n); return n; };
   const quitar = cls => document.querySelectorAll('.' + cls).forEach(n => n.remove());
 
-  // Pantalla completa: mientras se descarga el cerco por primera vez, o cuando no hubo respuesta.
-  function pantalla(tipo, alReintentar) {
+  // triángulo de advertencia ámbar con destellos, como el de la referencia
+  const ICONO_AVISO = `<svg viewBox="0 0 84 76" aria-hidden="true">
+    <defs><linearGradient id="cz-grad" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#FFD45C"/><stop offset="1" stop-color="#F2A900"/></linearGradient></defs>
+    <g stroke="#FFC93C" stroke-width="3" stroke-linecap="round" opacity=".75"><path d="M12 16 6 11M10 30H3M72 16l6-5M74 30h7"/></g>
+    <path d="M42 10 72 64H12Z" fill="url(#cz-grad)" stroke="url(#cz-grad)" stroke-width="9" stroke-linejoin="round"/>
+    <rect x="38.5" y="27" width="7" height="22" rx="3.5" fill="#fff"/><circle cx="42" cy="57" r="4" fill="#fff"/></svg>`;
+  const ICONO_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M6 6l12 12M18 6 6 18"/></svg>';
+
+  // La tarjeta: X arriba a la derecha (si se puede cerrar), ícono, título, texto y botón ancho.
+  function tarjeta(caja, {icono, titulo, texto, boton, botonActivo = true, cerrar}) {
+    caja.innerHTML = `<div class="cz-icono">${icono === 'cargando' ? '<div class="cz-giro"></div>' : ICONO_AVISO}</div>
+      <h2 class="cz-titulo"></h2><p class="cz-texto"></p>`;
+    caja.querySelector('.cz-titulo').textContent = titulo;
+    caja.querySelector('.cz-texto').textContent = texto;
+    if (boton) { const b = document.createElement('button'); b.type = 'button'; b.className = 'cz-boton cz-ancho'; b.textContent = boton; b.disabled = !botonActivo; caja.appendChild(b); }
+    if (cerrar) { const x = document.createElement('button'); x.type = 'button'; x.className = 'cz-cerrar'; x.setAttribute('aria-label', 'Cerrar'); x.innerHTML = ICONO_X; x.onclick = cerrar; caja.appendChild(x); }
+    return caja.querySelector('.cz-ancho');
+  }
+
+  // Pantalla completa mientras se descarga el cerco por primera vez.
+  function pantalla(tipo) {
     quitar('cz-capa'); if (!tipo) return;
-    const c = document.createElement('div'); c.className = 'cz-capa'; c.setAttribute('role', tipo === 'error' ? 'alert' : 'status');
-    c.innerHTML = tipo === 'error'
-      ? '<div class="cz-caja"><p><b>Sin respuesta</b></p><small>No se pudo descargar el mapa. Revisa tu señal e inténtalo otra vez.</small><button type="button" class="cz-boton">Reintentar</button></div>'
-      : '<div class="cz-caja"><div class="cz-giro" aria-hidden="true"></div><p>Cargando el mapa…</p></div>';
-    if (tipo === 'error') c.querySelector('button').onclick = alReintentar;
+    const c = document.createElement('div'); c.className = 'cz-capa'; c.setAttribute('role', 'status');
+    const caja = document.createElement('div'); caja.className = 'cz-caja'; c.appendChild(caja);
+    tarjeta(caja, {icono: 'cargando', titulo: 'Cargando el mapa…', texto: 'Descargando el cerco por primera vez en este dispositivo.'});
     poner(c);
-    if (tipo === 'error') c.querySelector('button').focus();
   }
   // Ventana al centro con el fondo oscurecido cuando algo no respondió. "Reintentar" muestra que está reintentando;
-  // si sale bien la ventana se cierra sola, si no vuelve a ofrecer reintentar. "Cerrar" la quita y la app sigue con lo guardado.
-  // op.reintentar: función async que devuelve true si salió bien.
+  // si sale bien la ventana se cierra sola, si no vuelve a ofrecer reintentar. La X la quita y la app sigue con lo guardado.
+  // op.reintentar: función async que devuelve true si salió bien. op.cerrable: false si no hay nada guardado que mostrar.
   function sinRespuesta(texto, op = {}) {
     quitar('cz-capa');
     const c = document.createElement('div'); c.className = 'cz-capa'; c.setAttribute('role', 'alertdialog'); c.setAttribute('aria-modal', 'true');
     const caja = document.createElement('div'); caja.className = 'cz-caja'; c.appendChild(caja);
+    const puedeCerrar = op.cerrable !== false;
     const cerrar = () => { c.remove(); removeEventListener('keydown', tecla); };
-    const tecla = e => { if (e.key === 'Escape' && op.cerrable !== false) cerrar(); };
+    const tecla = e => { if (e.key === 'Escape' && puedeCerrar) cerrar(); };
     function error() {
-      caja.innerHTML = '<p><b>Sin respuesta</b></p><small></small><div class="cz-botones"><button type="button" class="cz-boton">Reintentar</button></div>';
-      caja.querySelector('small').textContent = texto;
-      const [b] = caja.querySelectorAll('button');
+      const b = tarjeta(caja, {titulo: 'Sin respuesta', texto, boton: 'Reintentar', cerrar: puedeCerrar ? cerrar : null});
       b.onclick = async () => {
-        caja.innerHTML = '<div class="cz-giro" aria-hidden="true"></div><p>Reintentando…</p>';
+        tarjeta(caja, {icono: 'cargando', titulo: 'Reintentando…', texto: 'Esperando respuesta del servidor.', boton: 'Reintentando…', botonActivo: false, cerrar: puedeCerrar ? cerrar : null});
         let ok = false; try { ok = await op.reintentar(); } catch (e) { ok = false; }
+        if (!c.isConnected) return;   // la cerraron mientras reintentaba
         if (ok) cerrar(); else error();
       };
-      if (op.cerrable !== false) {
-        const x = document.createElement('button'); x.type = 'button'; x.className = 'cz-boton cz-sec'; x.textContent = 'Cerrar'; x.onclick = cerrar;
-        caja.querySelector('.cz-botones').appendChild(x);
-      }
       b.focus();
     }
-    error(); poner(c); caja.querySelector('button').focus();
+    poner(c); error();
     addEventListener('keydown', tecla);
     return cerrar;
   }
