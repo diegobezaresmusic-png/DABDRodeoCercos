@@ -1723,41 +1723,65 @@ function linkEgates() {
 }
 function renameCables() { net.wires.forEach(w => { if (w.kind === 'cable' && w.name === 'Cable sobre puerta') w.name = 'Cable puente'; }); }
 async function boot() {
-  // El cerco sale de la fuente única (cerco.js): la copia del dispositivo si está al día, si no la publicada.
-  // Después la nube manda: lo del dispositivo solo se sube si son cambios hechos sobre la versión actual de la nube.
+  // El cerco sale de la fuente única (cerco.js): si el dispositivo ya lo tiene, se abre al instante;
+  // si no, cerco.js muestra "Cargando…" (y "Sin respuesta · Reintentar" si internet no contesta).
   setSave('Cargando…');
   const ini = await Cerco.inicial();
-  if (!ini) { setSave('Sin conexión', 'warn'); snack('No se pudo cargar el cerco. Conéctate a internet y vuelve a abrir.'); return; }
   net = JSON.parse(JSON.stringify(ini.net)); SYNC = ini.base || 0;
-  const local = ini.desde === 'dispositivo' && Cerco.pendientes(ini) ? ini : null;   // cambios hechos aquí que tal vez no se han subido
   initStatic();
   renameCables(); linkEgates(); reparentOrphans();
   fit(); setMode('idle');
   window.addEventListener('resize', () => { if (needFit) { fit(); render(); } });
   let seen = false; try { seen = !!localStorage.getItem(LS_INTRO); } catch (e) {}
   if (!seen) showIntro(0);
+  sincronizar();
+}
+// Por detrás, sin bloquear: la nube manda; lo del dispositivo solo se sube si son cambios hechos sobre la versión actual de la nube.
+function aplicarRemota(remote) {
+  if (Cerco.tomarDeNube(remote)) snack('Este dispositivo tenía otra versión del cerco. Se abrió la de la nube y la otra quedó respaldada.');
+  SYNC = remote.savedAt || 0;
+  net = JSON.parse(JSON.stringify(remote.net)); renameCables(); const fixed = linkEgates() + reparentOrphans(); if (fixed) queueSave(); if (sel && !exists(sel)) sel = null; render(); renderDock();
+}
+let syncando = false;
+async function sincronizar() {
+  if (syncando) return; syncando = true;
   setSave('Conectando…');
-  const n = await Cerco.nube();
-  if (!n) { setSave(local ? 'Guardado en el teléfono' : 'Sin sesión', 'warn'); return; }
-  if (!n.doc) { setSave('Guardado solo en el teléfono', 'warn'); return; }
-  docRef = n.doc;
-  const remote = n.remota;
-  const pendiente = remote && local && local.base === remote.savedAt && (local.savedAt || 0) > (remote.savedAt || 0);
-  if (remote && !pendiente) {
-    if (remote.savedAt !== SYNC || !Cerco.igual(remote.net, net)) {
-      if (Cerco.tomarDeNube(remote)) snack('Este dispositivo tenía otra versión del cerco. Se abrió la de la nube y la otra quedó respaldada.');
-      SYNC = remote.savedAt || 0;
-      net = JSON.parse(JSON.stringify(remote.net)); renameCables(); const fixed = linkEgates() + reparentOrphans(); if (fixed) queueSave(); if (sel && !exists(sel)) sel = null; render(); renderDock();
+  const lento = setTimeout(() => Cerco.aviso('Buscando cambios…', {cargando: true, arriba: true}), 600);
+  try {
+    const n = await Cerco.nube();
+    if (n && n.error) {
+      setSave('Sin respuesta', 'warn');
+      Cerco.aviso('Sin respuesta del servidor. Tus cambios se guardan en este dispositivo.', {boton: 'Reintentar', accion: sincronizar, arriba: true});
+      return;
     }
-    setSave('Guardado', 'ok');
-  } else if (pendiente || (!remote && local)) doSave();
-  else setSave('Guardado', 'ok');
+    if (!n) {   // sin sesión: solo se revisa si se publicó una versión más nueva
+      const r = await Cerco.buscarCambios({net, base: SYNC}, null);
+      if (r.nueva) aplicarRemota(r.nueva);
+      setSave(Cerco.pendientes(Cerco.leerLocal()) ? 'Guardado en el teléfono' : 'Sin sesión', 'warn');
+      if (r.error) Cerco.aviso('Sin respuesta al buscar cambios. Se muestra la última versión guardada.', {boton: 'Reintentar', accion: sincronizar, arriba: true});
+      else Cerco.aviso(null);
+      return;
+    }
+    Cerco.aviso(null);
+    docRef = n.doc;
+    const remote = n.remota, l = Cerco.leerLocal(), local = Cerco.pendientes(l) ? l : null;   // cambios hechos aquí que tal vez no se han subido
+    const pendiente = remote && local && local.base === remote.savedAt && (local.savedAt || 0) > (remote.savedAt || 0);
+    if (remote && !pendiente) {
+      if (remote.savedAt !== SYNC || !Cerco.igual(remote.net, net)) aplicarRemota(remote);
+      setSave('Guardado', 'ok');
+    } else if (pendiente || (!remote && local)) doSave();
+    else setSave('Guardado', 'ok');
+  } finally { clearTimeout(lento); syncando = false; }
 }
 boot();
 </script>
 
 <script>
 if ('serviceWorker' in navigator) {
+  const habia = !!navigator.serviceWorker.controller;   // si ya había una versión, avisar cuando llegue la nueva
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (habia && window.Cerco) Cerco.aviso('Hay una versión nueva de la app.', {boton: 'Actualizar', accion: () => location.reload(), arriba: location.pathname.startsWith('/editor')});
+  });
   addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(e => console.warn('SW', e)));
 }
 </script>

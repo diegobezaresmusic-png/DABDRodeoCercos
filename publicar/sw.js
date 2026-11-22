@@ -1,7 +1,7 @@
-// Service worker: la app funciona sin señal en el campo.
-// HTML: primero la red (para ver cambios), si no hay señal usa la copia guardada.
-// Imágenes, íconos y fuentes: primero la copia guardada.
-const VERSION = '3c68866373a9';
+// Service worker: la app abre al instante y funciona sin señal en el campo.
+// Todo sale primero de lo guardado en el teléfono. Las páginas y el cerco se actualizan por detrás para la próxima vez;
+// la búsqueda de cambios del cerco (?fresco) va directo a internet. Una versión nueva de la app se instala sola y avisa.
+const VERSION = '75acb289bae0';
 const CACHE = 'cerco-' + VERSION;
 const PRECARGA = ["/", "/manifest.webmanifest", "/datos/cerco.json", "/datos/rancho.jpg", "/cerco.js", "/red-mapa.js", "/mapa/", "/editor/", "/config.js", "/nube.js", "/iconos/apple-touch-icon.png", "/iconos/icono-192.png", "/iconos/icono-512.png", "/iconos/icono-maskable-192.png", "/iconos/icono-maskable-512.png"];
 
@@ -22,10 +22,15 @@ self.addEventListener('fetch', e => {
   const fuente = /(^|\.)(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net)$/.test(url.hostname);
   if (url.origin !== location.origin && !fuente) return;  // p. ej. Supabase: siempre en vivo
 
-  if (req.mode === 'navigate' || req.destination === 'document' || url.pathname === '/datos/cerco.json') {   // el cerco: siempre el más nuevo si hay señal
-    e.respondWith(fetch(req)
-      .then(r => { const copia = r.clone(); caches.open(CACHE).then(c => c.put(req, copia)); return r; })
-      .catch(() => caches.match(req, {ignoreSearch: true}).then(r => r || caches.match('/'))));
+  const guardar = (clave, r) => { if (r && r.ok) { const copia = r.clone(); caches.open(CACHE).then(c => c.put(clave, copia)); } return r; };
+  if (url.pathname === '/datos/cerco.json' && url.searchParams.has('fresco')) {   // buscar cambios: directo a internet
+    e.respondWith(fetch(req).then(r => guardar('/datos/cerco.json', r)));
+    return;
+  }
+  if (req.mode === 'navigate' || req.destination === 'document' || url.pathname === '/datos/cerco.json') {
+    const red = fetch(req).then(r => guardar(req, r));   // por detrás, para la próxima vez
+    e.waitUntil(red.catch(() => {}));
+    e.respondWith(caches.match(req, {ignoreSearch: true}).then(hit => hit || red.catch(() => caches.match('/'))));
     return;
   }
   e.respondWith(caches.match(req).then(r => r || fetch(req).then(res => {

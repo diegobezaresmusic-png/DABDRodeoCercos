@@ -586,16 +586,22 @@ function startNotes(db){if(!db){db=localStore();LOCAL=true;}DB=db;
   startNotes(db);})();
 
 applyView();render();
-/* si en la nube hay una versión más nueva que la que se dibujó, se guarda en el dispositivo y se ofrece actualizar */
-const n=await Cerco.nube();
-if(n&&n.remota&&(n.remota.savedAt||0)>(RED_USADA.base||0)&&!Cerco.igual(n.remota.net,RED_USADA.net)){Cerco.tomarDeNube(n.remota);
-  const d=document.createElement('div');d.className='nueva';d.setAttribute('role','status');
-  d.innerHTML='<span>El cerco cambió en el editor.</span><button type="button">Actualizar mapa</button>';d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d);}
+/* por detrás: si hay una versión más nueva del cerco se ofrece actualizar; si no hay respuesta, se avisa y se puede reintentar */
+const buscar=async()=>{const lento=setTimeout(()=>Cerco.aviso('Buscando cambios…',{cargando:true}),600);
+  const r=await Cerco.buscarCambios(RED_USADA);clearTimeout(lento);
+  if(r.nueva)Cerco.aviso('El cerco cambió en el editor.',{boton:'Actualizar mapa',accion:()=>location.reload()});
+  else if(r.error)Cerco.aviso('Sin respuesta al buscar cambios. Se muestra la última versión guardada.',{boton:'Reintentar',accion:buscar});
+  else Cerco.aviso(null);};
+buscar();
 })();
 </script>
 
 <script>
 if ('serviceWorker' in navigator) {
+  const habia = !!navigator.serviceWorker.controller;   // si ya había una versión, avisar cuando llegue la nueva
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (habia && window.Cerco) Cerco.aviso('Hay una versión nueva de la app.', {boton: 'Actualizar', accion: () => location.reload(), arriba: location.pathname.startsWith('/editor')});
+  });
   addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(e => console.warn('SW', e)));
 }
 </script>
