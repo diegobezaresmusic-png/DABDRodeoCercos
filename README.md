@@ -11,7 +11,8 @@ Mapa y editor del cerco eléctrico. Se publica como **PWA**: una página web que
 |---|---|
 | `mapa/`, `editor/` | Las dos apps (generadas desde `fuente/`). |
 | `fuente/` | Plantillas y scripts que generan `mapa/` y `editor/`. |
-| `herramientas/construir.py` | Regenera `mapa/index.html` y `editor/index.html` desde `fuente/template2.html` y `fuente/editor/editor3.tpl.html`. Los cambios a las apps se hacen en esas plantillas. |
+| `herramientas/construir.py` | Baja de Supabase la última red del editor, y regenera `mapa/index.html` y `editor/index.html` desde `fuente/template2.html` y `fuente/editor/editor3.tpl.html`. Los cambios a las apps se hacen en esas plantillas. |
+| `fuente/red-mapa.js` | Convierte la red del editor al formato del mapa. **El cerco vive en un solo lugar: el editor.** El mapa siempre dibuja lo último que se guardó ahí (`fuente/network2.json` ya no se usa). |
 | `herramientas/publicar.py` | Arma `publicar/`: envuelve las apps, agrega manifest, íconos, service worker y el conector a Supabase. |
 | `herramientas/web/nube.js` | Conector a Supabase. Mapa y editor lo usan sin cambios en su código. |
 | `publicar/` | **Lo que sube Cloudflare.** Se genera; no editar a mano. |

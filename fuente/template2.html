@@ -54,6 +54,9 @@ h1{margin:0;font:700 clamp(28px,4vw,40px)/1 var(--f-display);letter-spacing:.01e
 .photo{filter:saturate(.92) brightness(.86) contrast(1.04)}
 
 /* fence drawing */
+.barb{fill:none;stroke:#D9B38C;stroke-width:2;stroke-dasharray:5 4;stroke-linecap:round;opacity:.9}
+.nueva{position:fixed;z-index:50;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);transform:translateX(-50%);display:flex;gap:10px;align-items:center;max-width:min(92vw,440px);padding:10px 10px 10px 14px;border-radius:14px;background:#15201A;color:#EEF2EC;font:14px/1.35 var(--f-body);box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.nueva button{flex:none;border:0;border-radius:10px;padding:10px 14px;background:#F29F05;color:#1D1600;font:700 14px var(--f-body);cursor:pointer}
 .casing{fill:none;stroke:#07100c;stroke-opacity:.55;stroke-width:4.4;stroke-linecap:round;stroke-linejoin:round}
 .wire{fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
 .wire.on{stroke:#FFF1C9}
@@ -303,7 +306,11 @@ h1{margin:0;font:700 clamp(28px,4vw,40px)/1 var(--f-display);letter-spacing:.01e
 </div>
 
 <script>
-const NET = /*__NET__*/null;
+// La red sale del editor: la incluida al publicar, la del editor en este dispositivo o la última de la nube (la más nueva)
+const RED_INCLUIDA = /*__RED__*/null;
+/*__RED_MAPA__*/
+const RED_USADA = RED_MAPA.elegir(RED_INCLUIDA);
+const NET = RED_MAPA.convertir(RED_USADA.net);
 const ROAD = [[733,160],[407,529],[389,550],[352,524],[336,508]];
 const PLACES = [{t:'Casa',x:322,y:448},{t:'Entrada',x:736,y:140}];
 const CIRC_NAME = {E1:'circuito interior',E2:'circuito del perímetro'};
@@ -319,7 +326,7 @@ const NSS={'vector-effect':'non-scaling-stroke'};
 /* ---------- red: cada línea recibe corriente de su "padre" ---------- */
 const L=NET.lines, MPP=NET.mpp, EN=NET.energizers, ALL=Object.keys(L);
 const KIDS={};ALL.forEach(k=>{(KIDS[L[k].parent]=KIDS[L[k].parent]||[]).push(k);});
-function solve(open){const live=new Set(),st=EN.map(e=>e.id);
+function solve(open){const live=new Set(),st=EN.filter(e=>!e.off).map(e=>e.id);
   while(st.length){const u=st.pop();for(const c of KIDS[u]||[]){if(L[c].sw&&open.has(L[c].sw))continue;live.add(c);st.push(c);}}
   return live;}
 const meters=keys=>{let m=0;keys.forEach(k=>m+=L[k].m);return m;};
@@ -334,10 +341,11 @@ const fullPts=ln=>hasLead(ln)?[ln.pa].concat(ln.pts):ln.pts;
 /* ---------- dibujo fijo ---------- */
 const gRoad=$('g-road'),gCas=$('g-casing'),gWire=$('g-wire'),gFlow=$('g-flow'),gHit=$('g-hit'),gSym=$('g-sym'),gCut=$('g-cut'),gSel=$('g-sel'),gDoubt=$('g-doubt');
 el('polyline',{points:ptsStr(ROAD),class:'road-edge'},gRoad);el('polyline',{points:ptsStr(ROAD),class:'road'},gRoad);
+(NET.barb||[]).forEach(b=>{const p=el('polyline',Object.assign({points:ptsStr(b.pts),class:'barb'},NSS),gRoad);const ti=document.createElementNS(NS,'title');ti.textContent=b.name+' · sin corriente · '+fmtM(b.m);p.appendChild(ti);});
 ALL.forEach(k=>el('polyline',Object.assign({points:ptsStr(fullPts(L[k])),class:'casing'},NSS),gCas));
 
 const tip=$('tip'),wrap=$('mapwrap'),svg=$('map'),vp=$('vp');
-const state={open:new Set(),live:solve(new Set())};
+const state={open:new Set(NET.abiertos||[]),live:null};state.live=solve(state.open);
 let pinned=null;
 function showTip(k,evt){const ln=L[k],on=state.live.has(k);
   tip.innerHTML=`<b></b><span class="m">${fmtM(ln.m)} · ${CIRC_NAME[ln.circuit]||''}</span><br><span class="state ${on?'on':'off'}">${on?'Con corriente':'Sin corriente'}</span>`;
@@ -404,7 +412,7 @@ function render(){const live=state.live;gWire.replaceChildren();gFlow.replaceChi
   $('pw-bar').style.width=(onM/TOTAL*100).toFixed(1)+'%';
   $('pw-circ').replaceChildren(...EN.map(e=>{const d=document.createElement('div');const m=meters(ALL.filter(k=>L[k].circuit===e.id&&live.has(k)));
     d.textContent=`${e.id==='E2'?'Perímetro':'Interior'}: ${fmtKm(m)} de ${fmtKm(CIRC[e.id]||0)}`;return d;}));
-  $('pw-msg').textContent=state.open.size?`Switches abiertos: ${[...state.open].sort((a,b)=>a.slice(1)-b.slice(1)).join(', ')}. Sin corriente: ${fmtM(TOTAL-onM)} de cerca.`:'Todos los switches cerrados: toda la cerca tiene corriente.';
+  $('pw-msg').textContent=state.open.size?`Switches abiertos: ${[...state.open].sort((a,b)=>a.slice(1)-b.slice(1)).join(', ')}. Sin corriente: ${fmtM(TOTAL-onM)} de cerca.`:(TOTAL-onM>5?`Todos los switches cerrados. Sin corriente: ${fmtM(TOTAL-onM)} de cerca desconectada.`:'Todos los switches cerrados: toda la cerca tiene corriente.');
   $('reset').disabled=!state.open.size;
   SWITCHES.forEach(sw=>{const row=document.querySelector(`[data-sw="${sw.id}"]`),open=state.open.has(sw.id);
     row.classList.toggle('open',open);const b=row.querySelector('.toggle');b.setAttribute('aria-pressed',open?'true':'false');b.querySelector('.st').textContent=open?'Abierto':'Cerrado';});}
@@ -587,4 +595,6 @@ function startNotes(db){if(!db){db=localStore();LOCAL=true;}DB=db;
   startNotes(db);})();
 
 applyView();render();
+RED_MAPA.revisarNube(RED_USADA,()=>{if(document.querySelector('.nueva'))return;const d=document.createElement('div');d.className='nueva';d.setAttribute('role','status');
+  d.innerHTML='<span>El cerco cambió en el editor.</span><button type="button">Actualizar mapa</button>';d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d);});
 </script>
