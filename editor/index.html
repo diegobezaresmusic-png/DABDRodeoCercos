@@ -867,9 +867,10 @@ const exists = s => ((s.t === 'w' || s.t === 'a') && W(s.id)) || (s.t === 'p' &&
 $('undo').onclick = undo;
 
 let docRef = null, saveTimer = 0, saving = false, saveAgain = false;
+let SYNC = 0;   // fecha (savedAt) de la versión de la nube de la que sale lo que hay en este dispositivo
 const CHECK = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
 function setSave(txt, cls) { const s = $('save'); s.innerHTML = (cls === 'ok' ? CHECK : '') + esc(txt); s.className = 'save' + (cls ? ' ' + cls : ''); }
-function lsWrite() { try { localStorage.setItem(LS_KEY, JSON.stringify({net, savedAt: Date.now()})); } catch (e) {} }
+function lsWrite(t) { try { localStorage.setItem(LS_KEY, JSON.stringify({net, savedAt: t || Date.now(), base: SYNC})); } catch (e) {} }
 function queueSave() {
   lsWrite(); clearTimeout(saveTimer);
   if (!docRef) { setSave('Guardado en el teléfono', 'warn'); return; }
@@ -880,7 +881,7 @@ async function doSave() {
   if (saving) { saveAgain = true; return; }
   saving = true; setSave('Guardando…');
   const slow = setTimeout(() => setSave('Guardando… (lento)', 'warn'), 8000);
-  try { await docRef.set({net, savedAt: Date.now()}); setSave('Guardado', 'ok'); }
+  try { const t = Date.now(); await docRef.set({net, savedAt: t}); SYNC = t; lsWrite(t); setSave('Guardado', 'ok'); }
   catch (e) { setSave(e && e.code === 'invalid_argument' ? 'Sin permiso para guardar' : 'Guardado solo en el teléfono', 'warn'); }
   finally { clearTimeout(slow); saving = false; if (saveAgain) { saveAgain = false; doSave(); } }
 }
@@ -1733,9 +1734,18 @@ async function boot() {
   try {
     const snap = await Promise.race([docRef.get(), new Promise((_, j) => setTimeout(() => j({code: 'timeout'}), 10000))]);
     const remote = snap.exists ? snap.data() : null;
-    if (remote && remote.net && (!local || (remote.savedAt || 0) >= (local.savedAt || 0) - 2000)) {
-      net = JSON.parse(JSON.stringify(remote.net)); renameCables(); const fixed = linkEgates() + reparentOrphans(); lsWrite(); if (fixed) queueSave(); if (sel && !exists(sel)) sel = null; render(); renderDock(); setSave('Guardado', 'ok');
-    } else if (local) doSave();
+    // La nube manda. Lo del dispositivo solo se sube si son cambios hechos sobre la versión actual de la nube;
+    // si salió de otra versión (o de la red de base sin sesión), gana la nube y lo del dispositivo se guarda aparte.
+    const pendiente = remote && remote.net && local && local.base && local.base === remote.savedAt && (local.savedAt || 0) > (remote.savedAt || 0);
+    if (remote && remote.net && !pendiente) {
+      if (local && (local.savedAt || 0) > (remote.savedAt || 0) && JSON.stringify(local.net) !== JSON.stringify(remote.net)) {
+        try { localStorage.setItem('cerco-editor-respaldo', JSON.stringify(local)); } catch (e) {}
+        snack('Este dispositivo tenía otra versión del cerco. Se abrió la de la nube y la otra quedó respaldada.');
+      }
+      SYNC = remote.savedAt || 0;
+      net = JSON.parse(JSON.stringify(remote.net)); renameCables(); const fixed = linkEgates() + reparentOrphans(); lsWrite(SYNC); if (fixed) queueSave(); if (sel && !exists(sel)) sel = null; render(); renderDock(); setSave('Guardado', 'ok');
+    } else if (pendiente) { SYNC = remote.savedAt; doSave(); }
+    else if (local) doSave();
     else setSave('Guardado', 'ok');
   } catch (e) { setSave('Guardado solo en el teléfono', 'warn'); }
 }

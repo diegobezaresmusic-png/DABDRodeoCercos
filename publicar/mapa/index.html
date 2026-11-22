@@ -484,7 +484,12 @@ const RED_MAPA = (() => {
   const leer = k => { try { const j = JSON.parse(localStorage.getItem(k) || 'null'); return j && j.net && j.net.wires ? j : null; } catch (e) { return null; } };
   const CLAVE_NUBE = 'cerco-mapa-red';
   function elegir(incluida) {
-    return [incluida, leer('cerco-editor-v3'), leer(CLAVE_NUBE)].filter(Boolean).reduce((a, b) => (b.savedAt || 0) > (a.savedAt || 0) ? b : a);
+    // La nube manda: la incluida al publicar y la última bajada de la nube son versiones de la nube.
+    // La copia del editor en este dispositivo solo cuenta si salió de la versión más nueva de la nube
+    // (cambios hechos aquí que tal vez no se han subido). Una copia vieja con fecha nueva no la tapa.
+    const nube = [incluida, leer(CLAVE_NUBE)].filter(Boolean).reduce((a, b) => (b.savedAt || 0) > (a.savedAt || 0) ? b : a);
+    const local = leer('cerco-editor-v3');
+    return local && local.base && local.base >= (nube.savedAt || 0) && (local.savedAt || 0) > (nube.savedAt || 0) ? local : nube;
   }
   /* después de dibujar: si la nube tiene una versión más nueva, se guarda y se ofrece recargar */
   async function revisarNube(usada, avisar) {

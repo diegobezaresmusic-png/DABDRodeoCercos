@@ -1,7 +1,7 @@
 // Service worker: la app funciona sin señal en el campo.
 // HTML: primero la red (para ver cambios), si no hay señal usa la copia guardada.
 // Imágenes, íconos y fuentes: primero la copia guardada.
-const VERSION = 'a4b554da367a';
+const VERSION = '3f4866fe764a';
 const CACHE = 'cerco-' + VERSION;
 const PRECARGA = ["/", "/manifest.webmanifest", "/mapa/", "/mapa/rancho.jpg", "/editor/", "/editor/rancho-cel.jpg", "/config.js", "/nube.js", "/iconos/apple-touch-icon.png", "/iconos/icono-192.png", "/iconos/icono-512.png", "/iconos/icono-maskable-192.png", "/iconos/icono-maskable-512.png"];
 
