@@ -229,6 +229,8 @@ def iconos(dest):
 
 
 def main():
+    from construir import construir
+    construir()
     if SALIDA.exists():
         shutil.rmtree(SALIDA)
     SALIDA.mkdir()

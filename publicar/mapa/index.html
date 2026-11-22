@@ -53,6 +53,9 @@ body{font-family:var(--f-body);font-size:15px;line-height:1.45;
 
 /* header */
 .top{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px 28px}
+.back{display:inline-flex;align-items:center;gap:2px;margin:0 0 10px;min-height:38px;padding:0 14px 0 8px;border-radius:99px;border:1px solid var(--rule);background:var(--panel);color:var(--fg);text-decoration:none;font:600 15px/1 var(--f-body)}
+.back svg{width:20px;height:20px}
+.back:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
 .eyebrow{margin:0 0 2px;font:600 12px/1 var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--amber-ink)}
 h1{margin:0;font:700 clamp(28px,4vw,40px)/1 var(--f-display);letter-spacing:.01em;text-wrap:balance}
 .stats{display:flex;flex-wrap:wrap;gap:6px 22px;margin:0}
@@ -215,6 +218,7 @@ h1{margin:0;font:700 clamp(28px,4vw,40px)/1 var(--f-display);letter-spacing:.01e
 <div class="app">
   <header class="top">
     <div>
+      <a class="back" href="/" aria-label="Volver al inicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>Inicio</a>
       <p class="eyebrow">Plano de cercado sobre vista satelital</p>
       <h1>Cerco eléctrico del rancho</h1>
     </div>

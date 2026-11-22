@@ -11,6 +11,7 @@ Mapa y editor del cerco eléctrico. Se publica como **PWA**: una página web que
 |---|---|
 | `mapa/`, `editor/` | Las dos apps (generadas desde `fuente/`). |
 | `fuente/` | Plantillas y scripts que generan `mapa/` y `editor/`. |
+| `herramientas/construir.py` | Regenera `mapa/index.html` y `editor/index.html` desde `fuente/template2.html` y `fuente/editor/editor3.tpl.html`. Los cambios a las apps se hacen en esas plantillas. |
 | `herramientas/publicar.py` | Arma `publicar/`: envuelve las apps, agrega manifest, íconos, service worker y el conector a Supabase. |
 | `herramientas/web/nube.js` | Conector a Supabase. Mapa y editor lo usan sin cambios en su código. |
 | `publicar/` | **Lo que sube Cloudflare.** Se genera; no editar a mano. |
