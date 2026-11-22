@@ -24,9 +24,14 @@
   const haySesion = () => { try { return !!localStorage.getItem('cerco-sesion'); } catch (e) { return false; } };
 
   /* ---------- avisos en pantalla (los mismos en todas las secciones) ---------- */
-  const CSS = `.cz-capa{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;background:rgba(10,16,13,.72);backdrop-filter:blur(2px);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#EEF2EC}
+  const CSS = `.cz-capa{position:fixed;inset:0;z-index:9000;display:grid;place-items:center;background:rgba(5,9,7,.86);backdrop-filter:blur(3px);-webkit-backdrop-filter:blur(3px);font:16px/1.4 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;color:#EEF2EC}
 .cz-caja{display:grid;justify-items:center;gap:14px;max-width:min(86vw,340px);padding:26px 22px;border-radius:18px;background:#15201A;box-shadow:0 12px 40px rgba(0,0,0,.4);text-align:center}
 .cz-caja p{margin:0}.cz-caja small{color:#A3AFA6;font-size:14px}
+.cz-capa{animation:cz-aparece .18s ease-out}
+.cz-botones{display:flex;flex-wrap:wrap;justify-content:center;gap:10px;margin-top:2px}
+.cz-boton.cz-sec{background:transparent;color:#EEF2EC;border:1px solid #35403A}
+.cz-boton:focus-visible{outline:3px solid #FFC93C;outline-offset:2px}
+@keyframes cz-aparece{from{opacity:0}}
 .cz-giro{width:34px;height:34px;border-radius:50%;border:3.5px solid rgba(255,255,255,.18);border-top-color:#FFC93C;animation:cz-giro .8s linear infinite}
 .cz-pastilla{position:fixed;z-index:8999;left:50%;transform:translateX(-50%);bottom:calc(env(safe-area-inset-bottom,0px) + 16px);display:flex;gap:10px;align-items:center;max-width:min(92vw,440px);padding:9px 10px 9px 14px;border-radius:14px;background:#15201A;color:#EEF2EC;font:14px/1.35 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;box-shadow:0 8px 28px rgba(0,0,0,.35)}
 .cz-pastilla .cz-giro{width:16px;height:16px;border-width:2.5px;flex:none}
@@ -50,7 +55,35 @@
     poner(c);
     if (tipo === 'error') c.querySelector('button').focus();
   }
-  // Pastilla abajo, sin estorbar: "Buscando cambios…", "Sin respuesta · Reintentar", "El cerco cambió · Actualizar".
+  // Ventana al centro con el fondo oscurecido cuando algo no respondió. "Reintentar" muestra que está reintentando;
+  // si sale bien la ventana se cierra sola, si no vuelve a ofrecer reintentar. "Cerrar" la quita y la app sigue con lo guardado.
+  // op.reintentar: función async que devuelve true si salió bien.
+  function sinRespuesta(texto, op = {}) {
+    quitar('cz-capa');
+    const c = document.createElement('div'); c.className = 'cz-capa'; c.setAttribute('role', 'alertdialog'); c.setAttribute('aria-modal', 'true');
+    const caja = document.createElement('div'); caja.className = 'cz-caja'; c.appendChild(caja);
+    const cerrar = () => { c.remove(); removeEventListener('keydown', tecla); };
+    const tecla = e => { if (e.key === 'Escape' && op.cerrable !== false) cerrar(); };
+    function error() {
+      caja.innerHTML = '<p><b>Sin respuesta</b></p><small></small><div class="cz-botones"><button type="button" class="cz-boton">Reintentar</button></div>';
+      caja.querySelector('small').textContent = texto;
+      const [b] = caja.querySelectorAll('button');
+      b.onclick = async () => {
+        caja.innerHTML = '<div class="cz-giro" aria-hidden="true"></div><p>Reintentando…</p>';
+        let ok = false; try { ok = await op.reintentar(); } catch (e) { ok = false; }
+        if (ok) cerrar(); else error();
+      };
+      if (op.cerrable !== false) {
+        const x = document.createElement('button'); x.type = 'button'; x.className = 'cz-boton cz-sec'; x.textContent = 'Cerrar'; x.onclick = cerrar;
+        caja.querySelector('.cz-botones').appendChild(x);
+      }
+      b.focus();
+    }
+    error(); poner(c); caja.querySelector('button').focus();
+    addEventListener('keydown', tecla);
+    return cerrar;
+  }
+  // Pastilla abajo, sin estorbar: "Buscando cambios…", "El cerco cambió · Actualizar".
   function aviso(texto, op = {}) {
     quitar('cz-pastilla'); if (!texto) return null;
     const d = document.createElement('div'); d.className = 'cz-pastilla' + (op.arriba ? ' cz-arriba' : ''); d.setAttribute('role', 'status');
@@ -100,7 +133,8 @@
       // al reintentar se pide con dirección única: así no queda en fila detrás de una descarga anterior que se quedó colgada
       const pub = await publicada({fresca: intento > 0});
       if (pub) r = elegir(pub, l);
-      else { clearTimeout(t); await new Promise(ok => pantalla('error', () => { pantalla('cargando'); ok(); })); }
+      else { clearTimeout(t); await new Promise(ok => sinRespuesta('No se pudo descargar el mapa. Revisa tu señal e inténtalo otra vez.',
+        {cerrable: false, reintentar: async () => { pantalla('cargando'); ok(); return true; }})); }
     }
     clearTimeout(t); pantalla(null);
     if (r.descartada) { if (r.respaldar) respaldar(r.descartada); escribirLocal({net: r.net, savedAt: r.base, base: r.base}); }
@@ -127,5 +161,5 @@
     return {nube: n, error: !!(n && n.error)};
   }
 
-  window.Cerco = {leerLocal, escribirLocal, pendientes, respaldar, publicada, elegir, inicial, nube, tomarDeNube, buscarCambios, igual, aviso, pantalla};
+  window.Cerco = {leerLocal, escribirLocal, pendientes, respaldar, publicada, elegir, inicial, nube, tomarDeNube, buscarCambios, igual, aviso, pantalla, sinRespuesta};
 })();

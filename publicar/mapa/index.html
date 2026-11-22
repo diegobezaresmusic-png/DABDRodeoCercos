@@ -641,11 +641,11 @@ function startNotes(db){if(!db){db=localStore();LOCAL=true;}DB=db;
 
 applyView();render();
 /* por detrás: si hay una versión más nueva del cerco se ofrece actualizar; si no hay respuesta, se avisa y se puede reintentar */
-const buscar=async()=>{const lento=setTimeout(()=>Cerco.aviso('Buscando cambios…',{cargando:true}),600);
-  const r=await Cerco.buscarCambios(RED_USADA);clearTimeout(lento);
+const buscar=async(desdeVentana)=>{const lento=desdeVentana?0:setTimeout(()=>Cerco.aviso('Buscando cambios…',{cargando:true}),600);
+  const r=await Cerco.buscarCambios(RED_USADA);clearTimeout(lento);Cerco.aviso(null);
   if(r.nueva)Cerco.aviso('El cerco cambió en el editor.',{boton:'Actualizar mapa',accion:()=>location.reload()});
-  else if(r.error)Cerco.aviso('Sin respuesta al buscar cambios. Se muestra la última versión guardada.',{boton:'Reintentar',accion:buscar});
-  else Cerco.aviso(null);};
+  else if(r.error&&!desdeVentana)Cerco.sinRespuesta('No se pudo revisar si hay cambios en el cerco. Mientras tanto se muestra la última versión guardada.',{reintentar:()=>buscar(true)});
+  return !r.error;};
 buscar();
 })();
 </script>

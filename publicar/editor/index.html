@@ -1797,24 +1797,23 @@ function aplicarRemota(remote) {
   net = JSON.parse(JSON.stringify(remote.net)); renameCables(); const fixed = linkEgates() + reparentOrphans(); if (fixed) queueSave(); if (sel && !exists(sel)) sel = null; render(); renderDock();
 }
 let syncando = false;
-async function sincronizar() {
-  if (syncando) return; syncando = true;
+async function sincronizar(desdeVentana) {   // devuelve true si hubo respuesta
+  if (syncando) return false; syncando = true;
   setSave('Conectando…');
-  const lento = setTimeout(() => Cerco.aviso('Buscando cambios…', {cargando: true, arriba: true}), 600);
+  const lento = desdeVentana ? 0 : setTimeout(() => Cerco.aviso('Buscando cambios…', {cargando: true, arriba: true}), 600);
+  const sinRespuesta = texto => { if (!desdeVentana) Cerco.sinRespuesta(texto, {reintentar: () => sincronizar(true)}); return false; };
   try {
     const n = await Cerco.nube();
     if (n && n.error) {
-      setSave('Sin respuesta', 'warn');
-      Cerco.aviso('Sin respuesta del servidor. Tus cambios se guardan en este dispositivo.', {boton: 'Reintentar', accion: sincronizar, arriba: true});
-      return;
+      setSave('Sin respuesta', 'warn'); Cerco.aviso(null);
+      return sinRespuesta('No se pudo conectar con el servidor. Tus cambios se siguen guardando en este dispositivo.');
     }
     if (!n) {   // sin sesión: solo se revisa si se publicó una versión más nueva
       const r = await Cerco.buscarCambios({net, base: SYNC}, null);
       if (r.nueva) aplicarRemota(r.nueva);
       setSave(Cerco.pendientes(Cerco.leerLocal()) ? 'Guardado en el teléfono' : 'Sin sesión', 'warn');
-      if (r.error) Cerco.aviso('Sin respuesta al buscar cambios. Se muestra la última versión guardada.', {boton: 'Reintentar', accion: sincronizar, arriba: true});
-      else Cerco.aviso(null);
-      return;
+      Cerco.aviso(null);
+      return r.error ? sinRespuesta('No se pudo revisar si hay cambios en el cerco. Mientras tanto se muestra la última versión guardada.') : true;
     }
     Cerco.aviso(null);
     docRef = n.doc;
@@ -1825,6 +1824,7 @@ async function sincronizar() {
       setSave('Guardado', 'ok');
     } else if (pendiente || (!remote && local)) doSave();
     else setSave('Guardado', 'ok');
+    return true;
   } finally { clearTimeout(lento); syncando = false; }
 }
 boot();
