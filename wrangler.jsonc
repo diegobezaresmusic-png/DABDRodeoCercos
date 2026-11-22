@@ -1,0 +1,12 @@
+// Configuración de Cloudflare: publica solo la carpeta publicar/ (sitio estático, sin código de servidor).
+// Se genera con: python herramientas/publicar.py
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "dabdrodeocercos",
+  "compatibility_date": "2026-10-01",
+  "assets": {
+    "directory": "./publicar",
+    "html_handling": "auto-trailing-slash",
+    "not_found_handling": "none"
+  }
+}
