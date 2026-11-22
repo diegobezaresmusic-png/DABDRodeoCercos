@@ -19,3 +19,12 @@
 
 /nube.js
   Cache-Control: no-cache
+
+/cerco.js
+  Cache-Control: no-cache
+
+/red-mapa.js
+  Cache-Control: no-cache
+
+/datos/cerco.json
+  Cache-Control: no-cache

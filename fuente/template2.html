@@ -219,7 +219,7 @@ h1{margin:0;font:700 clamp(28px,4vw,40px)/1 var(--f-display);letter-spacing:.01e
     <section class="mapwrap" id="mapwrap" aria-label="Mapa del cercado">
       <svg id="map" viewBox="0 0 976 1170" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Cercas eléctricas del rancho sobre la foto satelital">
         <g id="vp">
-          <image class="photo" href="rancho.jpg" x="0" y="0" width="976" height="1170" preserveAspectRatio="none"/>
+          <image class="photo" href="/datos/rancho.jpg" x="0" y="0" width="976" height="1170" preserveAspectRatio="none"/>
           <g id="g-road"></g>
           <g id="g-cut"></g>
           <g id="g-sel"></g>
@@ -266,17 +266,8 @@ h1{margin:0;font:700 clamp(28px,4vw,40px)/1 var(--f-display);letter-spacing:.01e
         <h2>Correcciones</h2>
         <p class="fix-status" id="fix-status" role="status">Cargando correcciones…</p>
         <ul class="fix-list" id="fix-list"></ul>
-        <div class="fix-btns"><button type="button" class="btn primary" id="mark2" aria-pressed="false" disabled>Marcar corrección</button><button type="button" class="btn" id="fix-copy" hidden>Copiar para Claude</button></div>
-        <textarea id="fix-copy-out" class="copy-out" rows="5" readonly hidden aria-label="Texto de las correcciones"></textarea>
-        <p class="note">Toca «Marcar corrección», luego el lugar del mapa, y escribe qué está mal. Cuando termines, avísame en el chat y las reviso todas.</p>
-      </section>
-
-      <section class="card">
-        <h2>Dudas de Claude</h2>
-        <label class="dz-toggle" for="doubt-toggle"><input type="checkbox" id="doubt-toggle" checked> Mostrar las dudas en el mapa</label>
-        <ul class="dz-list" id="doubt-list"></ul>
-        <p class="note">Son los puntos donde tu dibujo no me quedó claro. Contéstame por número.</p>
-        <p class="note dz-done" id="doubt-done" hidden></p>
+        <div class="fix-btns"><button type="button" class="btn primary" id="mark2" aria-pressed="false" disabled>Marcar corrección</button></div>
+        <p class="note">Toca «Marcar corrección», luego el lugar del mapa, y escribe qué está mal.</p>
       </section>
 
       <section class="card">
@@ -306,10 +297,10 @@ h1{margin:0;font:700 clamp(28px,4vw,40px)/1 var(--f-display);letter-spacing:.01e
 </div>
 
 <script>
-// La red sale del editor: la incluida al publicar, la del editor en este dispositivo o la última de la nube (la más nueva)
-const RED_INCLUIDA = /*__RED__*/null;
-/*__RED_MAPA__*/
-const RED_USADA = RED_MAPA.elegir(RED_INCLUIDA);
+(async () => {
+// El cerco sale de la fuente única (cerco.js), la misma que usa el editor; red-mapa.js lo pasa al formato del mapa.
+const RED_USADA = await Cerco.inicial();
+if (!RED_USADA) { document.getElementById('pw-msg').textContent = 'No se pudo cargar el cerco. Conéctate a internet y vuelve a abrir.'; return; }
 const NET = RED_MAPA.convertir(RED_USADA.net);
 const ROAD = [[733,160],[407,529],[389,550],[352,524],[336,508]];
 const PLACES = [{t:'Casa',x:322,y:448},{t:'Entrada',x:736,y:140}];
@@ -470,29 +461,12 @@ new ResizeObserver(applyView).observe(svg);
 let hinted=false,markMode=false;
 svg.addEventListener('pointerdown',()=>{if(!hinted){hinted=true;setTimeout(()=>{if(!markMode)$('hint').hidden=true;},2500);}});
 
-/* ---------- dudas de Claude ---------- */
-const dList=$('doubt-list');
-NET.doubts.forEach(d=>{const g=sym(d.pos[0],d.pos[1],'doubt',gDoubt);titled(g,'Duda '+d.n+': '+d.text);
-  el('path',{d:'M0 0 9-9',stroke:'#fff','stroke-width':1.6},g);
-  el('circle',{cx:14,cy:-14,r:9,fill:'#7C4DFF',stroke:'#fff','stroke-width':1.5},g);
-  el('text',{x:14,y:-10.5,'text-anchor':'middle',class:'doubt-n'},g).textContent='?'+d.n;
-  g.addEventListener('click',e=>{e.stopPropagation();if(drag.moved)return;showDoubt(d.n,false);});
-  const li=document.createElement('li');li.className='dz-row';li.dataset.n=d.n;
-  const b=document.createElement('button');b.type='button';b.className='dz-tag';b.textContent='?'+d.n;b.setAttribute('aria-label','Ver duda '+d.n+' en el mapa');
-  b.addEventListener('click',()=>showDoubt(d.n,true));
-  const p=document.createElement('p');p.textContent=d.text;li.append(b,p);dList.appendChild(li);});
-function showDoubt(n,zoom){const d=NET.doubts.find(x=>x.n===n);if(!d)return;if(zoom)focusAt(d.pos[0],d.pos[1],3.2);
-  document.querySelectorAll('.dz-row').forEach(r=>r.classList.toggle('hl',+r.dataset.n===n));
-  const r=document.querySelector(`.dz-row[data-n="${n}"]`);if(r&&!zoom)r.scrollIntoView({block:'nearest',behavior:'smooth'});}
-$('doubt-toggle').addEventListener('change',e=>{gDoubt.style.display=e.target.checked?'':'none';});
-if((NET.resolved||[]).length){const p=$('doubt-done');p.hidden=false;
-  p.textContent='Ya confirmado ('+NET.resolved.length+' de '+(NET.resolved.length+NET.doubts.length)+'): '+NET.resolved.map(r=>'?'+r.n+' '+r.text).join('; ')+'.';}
 
 /* ---------- correcciones (base de datos del mapa; si no hay, se guardan en este dispositivo) ---------- */
 const TIPOS=['Línea que sobra','Falta una línea','Línea en otro lugar','Conexión incorrecta','Switch','Cable sobre puerta','Puerta','Sentido del flujo','Energizador','Otro'];
 const gPins=$('g-pins'),PINS=[];
 const markBtn=$('mark'),markBtn2=$('mark2'),form=$('fix-form'),fTipo=$('fix-tipo'),fNota=$('fix-nota'),fNear=$('fix-near'),fMsg=$('fix-msg'),
-  fSave=$('fix-save'),fTitle=$('fix-title'),fixList=$('fix-list'),fixStatus=$('fix-status'),copyBtn=$('fix-copy'),copyOut=$('fix-copy-out');
+  fSave=$('fix-save'),fTitle=$('fix-title'),fixList=$('fix-list'),fixStatus=$('fix-status');
 fTipo.innerHTML=TIPOS.map(t=>`<option>${t}</option>`).join('');
 let DB=null,LOCAL=false,notes=[],draft=null,editing=null,readOnly=false,confirmDel=null,statusHold=0;
 function segDist(x,y,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],q=dx*dx+dy*dy||1;let t=((x-a[0])*dx+(y-a[1])*dy)/q;t=Math.max(0,Math.min(1,t));return Math.hypot(a[0]+t*dx-x,a[1]+t*dy-y);}
@@ -532,7 +506,7 @@ form.addEventListener('submit',async e=>{e.preventDefault();if(!DB||!draft)retur
     cerca:draft.near?draft.near.label:'',ref:draft.near?draft.near.ref:'',estado:editing?(editing.estado||'pendiente'):'pendiente',
     creado:editing?(editing.creado||new Date().toISOString()):new Date().toISOString()};
   fSave.disabled=true;fMsg.textContent='Guardando…';
-  const slow=setTimeout(()=>{fMsg.textContent='Está tardando. Si no termina, copia tu nota y mándamela por el chat.';fSave.disabled=false;},8000);
+  const slow=setTimeout(()=>{fMsg.textContent='Está tardando. Revisa tu conexión e inténtalo otra vez.';fSave.disabled=false;},8000);
   try{if(editing)await DB.doc('correcciones/'+editing.id).set(body);else await DB.collection('correcciones').add(body);
     clearTimeout(slow);closeForm();flashStatus(`Corrección ${body.n} guardada.`);}
   catch(err){clearTimeout(slow);fSave.disabled=false;const c=err&&err.code;
@@ -545,7 +519,7 @@ svg.addEventListener('click',e=>{if(!markMode)return;if(e.target.closest&&e.targ
 function focusNote(id,zoom=true){const nd=notes.find(n=>n.id===id);if(!nd)return;if(zoom)focusAt(nd.x,nd.y,3);
   document.querySelectorAll('.fix-row').forEach(r=>r.classList.toggle('hl',r.dataset.id===id));
   const r=document.querySelector(`.fix-row[data-id="${id}"]`);if(r&&!zoom)r.scrollIntoView({block:'nearest',behavior:'smooth'});}
-function renderNotes(){fixList.replaceChildren();copyBtn.hidden=!notes.length;if(!notes.length)copyOut.hidden=true;
+function renderNotes(){fixList.replaceChildren();
   notes.forEach(nd=>{const li=document.createElement('li');li.className='fix-row'+(nd.estado==='resuelto'?' done':'');li.dataset.id=nd.id;
     const tag=document.createElement('button');tag.type='button';tag.className='pin-tag';tag.textContent=nd.n;tag.setAttribute('aria-label','Ver corrección '+nd.n+' en el mapa');
     tag.addEventListener('click',()=>focusNote(nd.id));
@@ -566,12 +540,8 @@ function renderNotes(){fixList.replaceChildren();copyBtn.hidden=!notes.length;if
     li.append(tag,tx,acts);fixList.appendChild(li);});
   drawPins();}
 function statusIdle(){if(Date.now()<statusHold)return;const pend=notes.filter(n=>n.estado!=='resuelto').length;
-  const where=LOCAL?' Guardadas solo en este dispositivo: usa «Copiar para Claude» y pégalas en el chat.':'';
+  const where=LOCAL?' Guardadas solo en este dispositivo: inicia sesión para guardarlas en la nube.':'';
   fixStatus.textContent=notes.length?`${notes.length} ${notes.length===1?'corrección':'correcciones'}${pend!==notes.length?` · ${pend} pendientes`:''}.${where}`:'Aún no hay correcciones. Toca «Marcar corrección» y luego el lugar del mapa.';}
-copyBtn.addEventListener('click',async()=>{
-  const txt='Correcciones del mapa del cerco:\n'+notes.map(n=>`${n.n}. [${n.tipo}] ${n.nota}${n.cerca?' (cerca de: '+n.cerca+')':''} — punto x=${n.x}, y=${n.y}${n.estado==='resuelto'?' (resuelta)':''}`).join('\n');
-  try{await navigator.clipboard.writeText(txt);flashStatus('Copiado. Pégalo en el chat.');}
-  catch(e){copyOut.value=txt;copyOut.hidden=false;copyOut.focus();copyOut.select();flashStatus('Selecciona el texto, cópialo y pégalo en el chat.');}});
 /* respaldo local con la misma forma que la base de datos */
 function localStore(){const KEY='cerco-correcciones-v1';let docs={},subs=[],seq=0;
   try{docs=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){docs={};}
@@ -595,6 +565,10 @@ function startNotes(db){if(!db){db=localStore();LOCAL=true;}DB=db;
   startNotes(db);})();
 
 applyView();render();
-RED_MAPA.revisarNube(RED_USADA,()=>{if(document.querySelector('.nueva'))return;const d=document.createElement('div');d.className='nueva';d.setAttribute('role','status');
-  d.innerHTML='<span>El cerco cambió en el editor.</span><button type="button">Actualizar mapa</button>';d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d);});
+/* si en la nube hay una versión más nueva que la que se dibujó, se guarda en el dispositivo y se ofrece actualizar */
+const n=await Cerco.nube();
+if(n&&n.remota&&(n.remota.savedAt||0)>(RED_USADA.base||0)&&!Cerco.igual(n.remota.net,RED_USADA.net)){Cerco.tomarDeNube(n.remota);
+  const d=document.createElement('div');d.className='nueva';d.setAttribute('role','status');
+  d.innerHTML='<span>El cerco cambió en el editor.</span><button type="button">Actualizar mapa</button>';d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d);}
+})();
 </script>

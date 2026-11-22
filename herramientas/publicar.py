@@ -1,6 +1,7 @@
-# Genera la carpeta publicar/ que sube Cloudflare Pages.
-# Toma mapa/index.html y editor/index.html (fragmentos sin <head>), los envuelve en un
-# documento completo con los metadatos de PWA y copia imágenes, íconos, manifest y service worker.
+# Genera la carpeta publicar/ que sube Cloudflare.
+# Envuelve las páginas del mapa y del editor (construir.py) en un documento completo con los metadatos de PWA,
+# y escribe UNA sola vez lo que comparten: datos/cerco.json (el cerco, bajado de la nube), datos/rancho.jpg (la foto)
+# y cerco.js (cómo se carga el cerco). Además íconos, manifest y service worker.
 #
 # Uso (desde la raíz del proyecto):  python herramientas/publicar.py
 import hashlib, json, shutil
@@ -12,12 +13,12 @@ NOMBRE = 'Cerco del Rancho'
 COLOR = '#15201A'
 
 APPS = {
-    'mapa':   {'titulo': 'Mapa del Cerco',   'imagenes': ['rancho.jpg']},
-    'editor': {'titulo': 'Editor del Cerco', 'imagenes': ['rancho-cel.jpg']},
+    'mapa':   {'titulo': 'Mapa del Cerco',   'scripts': ['/red-mapa.js']},
+    'editor': {'titulo': 'Editor del Cerco', 'scripts': []},
 }
 
 
-def cabeza(titulo):
+def cabeza(titulo, scripts=()):
     return f'''<!doctype html>
 <html lang="es">
 <head>
@@ -35,7 +36,8 @@ def cabeza(titulo):
 <style>:root{{color-scheme:light dark}}body{{margin:0}}img{{max-width:100%}}[hidden]{{display:none!important}}</style>
 <script src="/config.js"></script>
 <script src="/nube.js"></script>
-</head>
+<script src="/cerco.js"></script>
+''' + ''.join(f'<script src="{s}"></script>\n' for s in scripts) + '''</head>
 <body>
 '''
 
@@ -164,6 +166,15 @@ HEADERS = '''/*
 
 /nube.js
   Cache-Control: no-cache
+
+/cerco.js
+  Cache-Control: no-cache
+
+/red-mapa.js
+  Cache-Control: no-cache
+
+/datos/cerco.json
+  Cache-Control: no-cache
 '''
 
 SW = '''// Service worker: la app funciona sin señal en el campo.
@@ -190,7 +201,7 @@ self.addEventListener('fetch', e => {
   const fuente = /(^|\\.)(fonts\\.googleapis\\.com|fonts\\.gstatic\\.com|cdn\\.jsdelivr\\.net)$/.test(url.hostname);
   if (url.origin !== location.origin && !fuente) return;  // p. ej. Supabase: siempre en vivo
 
-  if (req.mode === 'navigate' || req.destination === 'document') {
+  if (req.mode === 'navigate' || req.destination === 'document' || url.pathname === '/datos/cerco.json') {   // el cerco: siempre el más nuevo si hay señal
     e.respondWith(fetch(req)
       .then(r => { const copia = r.clone(); caches.open(CACHE).then(c => c.put(req, copia)); return r; })
       .catch(() => caches.match(req, {ignoreSearch: true}).then(r => r || caches.match('/'))));
@@ -229,24 +240,33 @@ def iconos(dest):
 
 
 def main():
-    from construir import construir
-    construir()
+    from construir import paginas, cerco_de_la_nube
+    anterior = SALIDA / 'datos' / 'cerco.json'
+    cerco = cerco_de_la_nube() or (json.loads(anterior.read_text(encoding='utf-8')) if anterior.exists() else None)
+    if not cerco:
+        raise SystemExit('No hay cerco: ni en la nube ni en una publicación anterior.')
     if SALIDA.exists():
         shutil.rmtree(SALIDA)
     SALIDA.mkdir()
     archivos = ['/', '/manifest.webmanifest']
 
-    for app, cfg in APPS.items():
-        frag = (RAIZ / app / 'index.html').read_text(encoding='utf-8')
+    # lo que comparten todas las secciones: una sola copia de cada cosa
+    (SALIDA / 'datos').mkdir()
+    (SALIDA / 'datos' / 'cerco.json').write_text(json.dumps(cerco, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
+    shutil.copy2(RAIZ / 'fuente' / 'rancho.jpg', SALIDA / 'datos' / 'rancho.jpg')
+    for js in ('cerco.js', 'nube.js'):
+        shutil.copy2(RAIZ / 'herramientas' / 'web' / js, SALIDA / js)
+    shutil.copy2(RAIZ / 'fuente' / 'red-mapa.js', SALIDA / 'red-mapa.js')
+    archivos += ['/datos/cerco.json', '/datos/rancho.jpg', '/cerco.js', '/red-mapa.js']
+
+    for app, html in paginas().items():
+        cfg = APPS[app]
         (SALIDA / app).mkdir()
-        (SALIDA / app / 'index.html').write_text(cabeza(cfg['titulo']) + frag + PIE, encoding='utf-8')
+        (SALIDA / app / 'index.html').write_text(cabeza(cfg['titulo'], cfg['scripts']) + html + PIE, encoding='utf-8')
         archivos.append(f'/{app}/')
-        for img in cfg['imagenes']:
-            shutil.copy2(RAIZ / app / img, SALIDA / app / img)
-            archivos.append(f'/{app}/{img}')
+    print(f"cerco publicado: {len(cerco['net']['wires'])} alambres")
 
     (SALIDA / 'index.html').write_text(INICIO, encoding='utf-8')
-    shutil.copy2(RAIZ / 'herramientas' / 'web' / 'nube.js', SALIDA / 'nube.js')
     cfg_ruta = RAIZ / 'config.nube.json'
     cfg = json.loads(cfg_ruta.read_text(encoding='utf-8')) if cfg_ruta.exists() else {}
     if 'service_role' in json.dumps(cfg) or str(cfg.get('clave', '')).startswith('sb_secret_'):

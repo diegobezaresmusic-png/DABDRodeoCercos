@@ -1,9 +1,9 @@
 // Service worker: la app funciona sin señal en el campo.
 // HTML: primero la red (para ver cambios), si no hay señal usa la copia guardada.
 // Imágenes, íconos y fuentes: primero la copia guardada.
-const VERSION = '3f4866fe764a';
+const VERSION = '3c68866373a9';
 const CACHE = 'cerco-' + VERSION;
-const PRECARGA = ["/", "/manifest.webmanifest", "/mapa/", "/mapa/rancho.jpg", "/editor/", "/editor/rancho-cel.jpg", "/config.js", "/nube.js", "/iconos/apple-touch-icon.png", "/iconos/icono-192.png", "/iconos/icono-512.png", "/iconos/icono-maskable-192.png", "/iconos/icono-maskable-512.png"];
+const PRECARGA = ["/", "/manifest.webmanifest", "/datos/cerco.json", "/datos/rancho.jpg", "/cerco.js", "/red-mapa.js", "/mapa/", "/editor/", "/config.js", "/nube.js", "/iconos/apple-touch-icon.png", "/iconos/icono-192.png", "/iconos/icono-512.png", "/iconos/icono-maskable-192.png", "/iconos/icono-maskable-512.png"];
 
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(PRECARGA)).then(() => self.skipWaiting()));
@@ -22,7 +22,7 @@ self.addEventListener('fetch', e => {
   const fuente = /(^|\.)(fonts\.googleapis\.com|fonts\.gstatic\.com|cdn\.jsdelivr\.net)$/.test(url.hostname);
   if (url.origin !== location.origin && !fuente) return;  // p. ej. Supabase: siempre en vivo
 
-  if (req.mode === 'navigate' || req.destination === 'document') {
+  if (req.mode === 'navigate' || req.destination === 'document' || url.pathname === '/datos/cerco.json') {   // el cerco: siempre el más nuevo si hay señal
     e.respondWith(fetch(req)
       .then(r => { const copia = r.clone(); caches.open(CACHE).then(c => c.put(req, copia)); return r; })
       .catch(() => caches.match(req, {ignoreSearch: true}).then(r => r || caches.match('/'))));

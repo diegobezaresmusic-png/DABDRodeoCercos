@@ -208,7 +208,7 @@ a.tb:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 <main class="mapwrap" id="wrap">
   <svg id="map" aria-label="Mapa del cerco eléctrico sobre la foto del rancho">
     <g id="world">
-      <image id="photo" href="rancho-cel.jpg" x="0" y="0" preserveAspectRatio="none"></image>
+      <image id="photo" href="/datos/rancho.jpg" x="0" y="0" preserveAspectRatio="none"></image>
       <g id="g-road"></g>
       <g id="g-wire"></g>
       <g id="g-draft"></g>
@@ -224,7 +224,7 @@ a.tb:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
   <div class="tools2" id="tools2">
     <button class="zb add" type="button" id="tAdd" aria-label="Agregar algo" data-tip="Agregar algo" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg></button>
     <button class="zb" type="button" id="tFilter" aria-label="Qué se ve en el mapa" data-tip="Qué se ve en el mapa" aria-expanded="false"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round" stroke-linecap="round"><path d="M3 5h18l-7 8v6l-4-2v-4z"/></svg><i class="dot" id="fDot" hidden></i></button>
-    <button class="zb" type="button" id="tAsk" aria-label="Preguntas de Claude" data-tip="Preguntas de Claude"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><circle cx="12" cy="12" r="9.5"/><path d="M9.3 9.3a2.8 2.8 0 1 1 3.9 2.6c-.7.3-1.2.9-1.2 1.7"/><circle cx="12" cy="17" r=".9" fill="currentColor"/></svg><b class="badge" id="askBadge"></b></button>
+    
   </div>
   <div class="pop" id="pop" hidden role="dialog" aria-modal="false"></div>
   <div class="zoom">
@@ -242,9 +242,8 @@ a.tb:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
 <div class="modal" id="modal" hidden></div>
 
 <script>
-const BASE = /*__BASE__*/null;
 const ROAD = [[733,160],[407,529],[389,550],[352,524],[336,508]];
-const DOC_PATH = 'cerco/red', LS_KEY = 'cerco-editor-v3', LS_INTRO = 'cerco-intro-v1';
+const LS_INTRO = 'cerco-intro-v1';
 const NS = 'http://www.w3.org/2000/svg';
 const $ = id => document.getElementById(id);
 const CIRC_COL = ['#FFF1C9', '#6FE3EE', '#B6F36B', '#FF9EDB', '#FFB36B'];
@@ -254,11 +253,11 @@ const isBarb = w => !!w && w.kind === 'barb';
 const isEgate = w => !!w && w.kind === 'cable' && !!w.egate;   // puerta blanca: como un switch en puerta (cerrada pasa la corriente)
 const cabV = w => w.egate ? V('gate') : V('cable');
 
-let net = JSON.parse(JSON.stringify(BASE));
+let net = {v: 1, mpp: 1.8475750577367205, size: [976, 1170], energizers: [], wires: [], parts: []};   // se llena en boot() desde la fuente única
 let view = {k: 1, tx: 0, ty: 0};
 let mode = 'idle', sel = null, draft = null, ctx = {};
 let undoSt = [], redoSt = [];
-let showQs = false; try { showQs = localStorage.getItem('cerco-ver-preguntas') === '1'; } catch (e) {}
+const showQs = false;   // las preguntas de Claude ya no se muestran
 const isQ = p => p.type === 'note' && p.by === 'claude';
 // filtro: qué se ve en el mapa (el alambre siempre se ve)
 const FILTERS = [['flow', 'Flechas del flujo'], ['energizer', 'Energizadores'], ['switch', 'Switches'], ['gate', 'Puertas'], ['cable', 'Cables puente'], ['barb', 'Cercas sin corriente'], ['end', 'Fines de línea'], ['note', 'Notas']];
@@ -267,7 +266,7 @@ const V = t => vis[t] !== false;
 const filtering = () => FILTERS.some(([k]) => !V(k));
 const partKey = p => p.type === 'note' ? 'note' : p.type;
 function setVis(next) { vis = next; try { localStorage.setItem('cerco-filtro', JSON.stringify(vis)); } catch (e) {} render(); renderDock(); updateZoomChip(); if (popKind === 'filter') renderPop(); }
-const qHidden = p => isQ(p) && !showQs && !(mode === 'ask' && ctx.list && ctx.list[ctx.i] === p.id);   // las preguntas no estorban en el mapa
+const qHidden = p => isQ(p);   // las preguntas de Claude ya no se muestran en el mapa
 let SOL = null, AIM = null;
 
 /* ---------- geometría ---------- */
@@ -870,7 +869,7 @@ let docRef = null, saveTimer = 0, saving = false, saveAgain = false;
 let SYNC = 0;   // fecha (savedAt) de la versión de la nube de la que sale lo que hay en este dispositivo
 const CHECK = '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 5 5 9-10"/></svg>';
 function setSave(txt, cls) { const s = $('save'); s.innerHTML = (cls === 'ok' ? CHECK : '') + esc(txt); s.className = 'save' + (cls ? ' ' + cls : ''); }
-function lsWrite(t) { try { localStorage.setItem(LS_KEY, JSON.stringify({net, savedAt: t || Date.now(), base: SYNC})); } catch (e) {} }
+function lsWrite(t) { Cerco.escribirLocal({net, savedAt: t || Date.now(), base: SYNC}); }
 function queueSave() {
   lsWrite(); clearTimeout(saveTimer);
   if (!docRef) { setSave('Guardado en el teléfono', 'warn'); return; }
@@ -936,7 +935,7 @@ const KIND = {
   barb: {ic: 'barb', name: 'Cerca sin corriente', desc: 'Púas u otro alambre, sin corriente'},
   wire: {ic: 'wire', name: 'Alambre', desc: 'Un tramo nuevo de cerca eléctrica'},
   energizer: {ic: 'energizer', name: 'Energizador', desc: 'De donde sale la corriente'},
-  note: {ic: 'note', name: 'Nota para Claude', desc: 'Para explicarme algo en el mapa'},
+  note: {ic: 'note', name: 'Nota', desc: 'Para apuntar algo en el mapa'},
   end: {ic: 'end', name: 'Fin de línea', desc: 'Aquí termina la corriente (punto negro)'}
 };
 
@@ -953,7 +952,7 @@ function head(ic, step, title, closeFn) {
   return `<div class="dhead"><div class="ico">${IC[ic]}</div><div class="tt">${step ? `<span class="step">${esc(step)}</span>` : ''}<h2>${esc(title)}</h2></div>${closeFn ? `<button class="x" id="dx" type="button" aria-label="Cerrar">${IC.x}</button>` : ''}</div>`;
 }
 function li(id, ic, label, sub, danger) { return `<button class="li${danger ? ' danger' : ''}" id="${id}" type="button">${IC[ic]}<span>${esc(label)}${sub ? `<small>${esc(sub)}</small>` : ''}</span>${IC.chev}</button>`; }
-const pendingQs = () => net.parts.filter(p => p.type === 'note' && p.by === 'claude' && !(p.answer && p.answer.trim()));
+const pendingQs = () => [];
 
 function setMode(m, c) {
   mode = m; ctx = c || {};
@@ -1246,7 +1245,7 @@ function renderSelect() {
   }
   if (q.type === 'note' && q.by === 'claude') { const list = net.parts.filter(p => p.type === 'note' && p.by === 'claude').map(p => p.id); sel = null; setMode('ask', {list, i: Math.max(0, list.indexOf(q.id))}); flyToNote(); return; }
   if (q.type === 'note') {
-    H(`${head('note', 'Nota para Claude', 'Lo que quieres que sepa', true)}
+    H(`${head('note', 'Nota', 'Lo que quieres apuntar', true)}
       <textarea id="nt" aria-label="Texto de la nota" placeholder="Ej. aquí el alambre sigue hasta el bebedero">${esc(q.text || '')}</textarea>
       <button class="b pri huge" id="ok" type="button">${IC.check}Guardar nota</button>
       <div class="list">${li('a-move', 'move', 'Mover')}${li('a-del', 'trash', 'Borrar esta nota', '', true)}</div>`);
@@ -1294,13 +1293,11 @@ function updateTools() {
   box.hidden = !['idle', 'select', 'choose'].includes(mode);
   if (box.hidden && popKind) closePop();
   const n = pendingQs().length;
-  $('tAsk').hidden = !n; $('askBadge').textContent = n ? String(n) : '';
   $('fDot').hidden = !filtering();
   $('tFilter').setAttribute('aria-label', filtering() ? 'Qué se ve en el mapa (hay un filtro activo)' : 'Qué se ve en el mapa');
 }
 $('tAdd').onclick = () => openPop('add');
 $('tFilter').onclick = () => openPop('filter');
-$('tAsk').onclick = () => { closePop(); sel = null; startAsk(); };
 document.addEventListener('pointerdown', e => { if (popKind && !pop.contains(e.target) && !e.target.closest('#tools2')) closePop(); });
 
 /* ---------- preguntas de Claude, una por una ---------- */
@@ -1601,18 +1598,8 @@ function openMenu() {
   B('help', 'Cómo se usa', () => { closeMenu(); showIntro(0); });
   B('eye', '¿Qué es cada cosa?', () => { closeMenu(); showLegend(); });
   B('fit', 'Ver todo el rancho', () => { fit(); closeMenu(); });
-  B('ask', showQs ? 'Ocultar las preguntas en el mapa' : 'Mostrar las preguntas en el mapa', () => { showQs = !showQs; try { localStorage.setItem('cerco-ver-preguntas', showQs ? '1' : '0'); } catch (e) {} closeMenu(); render(); snack(showQs ? 'Preguntas visibles en el mapa' : 'Preguntas ocultas. Siguen en el botón «preguntas»'); });
   B('eye', photoOn ? 'Ocultar la foto' : 'Mostrar la foto', () => { photoOn = !photoOn; $('photo').style.opacity = photoOn ? 1 : 0.15; closeMenu(); });
   if (redoSt.length) B('redo', 'Rehacer', () => { closeMenu(); redo(); });
-  B('copy', 'Copiar todo para Claude', async () => {
-    const txt = JSON.stringify(net);
-    try { await navigator.clipboard.writeText(txt); closeMenu(); snack('Copiado. Pégalo en el chat con Claude'); }
-    catch (e) { const ta = document.createElement('textarea'); ta.readOnly = true; ta.id = 'copy-out'; ta.value = txt; menu.appendChild(ta); ta.focus(); ta.select(); }
-  });
-  B('reset', resetArm ? 'Toca otra vez para confirmar' : 'Volver a la versión de Claude', () => {
-    if (!resetArm) { resetArm = true; openMenu(); return; }
-    resetArm = false; change(() => { net = JSON.parse(JSON.stringify(BASE)); }); sel = null; closeMenu(); setMode('idle'); snack('Volviste a la versión de Claude', true);
-  }, 'danger');
 }
 function closeMenu() { menu.hidden = true; resetArm = false; $('menuBtn').setAttribute('aria-expanded', 'false'); }
 $('menuBtn').onclick = () => menu.hidden ? openMenu() : closeMenu();
@@ -1635,7 +1622,7 @@ const INTRO = [
    '<svg viewBox="0 0 300 120"><polyline points="30,80 270,80" fill="none" stroke="#FFF1C9" stroke-width="4"/><g transform="translate(150 80)"><circle r="22" fill="none" stroke="#FFC93C" stroke-width="3"/><rect x="-12" y="-8" width="24" height="16" rx="4" fill="#E5352B" stroke="#fff" stroke-width="2"/><path d="M-7 0H7" stroke="#fff" stroke-width="3" stroke-linecap="round"/></g><path d="M170 40c8 6 10 16 6 26l-4 10" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round"/><circle cx="168" cy="34" r="9" fill="#fff" opacity=".9"/></svg>'],
   [MOUSE ? 'Agrega con un clic' : 'Agrega con la mira', MOUSE ? 'Usa el botón amarillo «+» de la izquierda del mapa y elige qué. Luego haz clic en el mapa donde va. Un círculo verde te avisa que quedó sobre un alambre.' : 'Toca el botón amarillo «+» del mapa y elige qué. Luego mueve el mapa con el dedo hasta que la mira quede en el lugar y toca el botón amarillo.',
    '<svg viewBox="0 0 300 120"><polyline points="20,95 280,30" fill="none" stroke="#FFF1C9" stroke-width="4"/><g transform="translate(150 62)"><circle r="18" fill="none" stroke="#000" stroke-opacity=".5" stroke-width="5"/><circle r="18" fill="none" stroke="#fff" stroke-width="2.5"/><path d="M0 -34V-22M0 22V34M-34 0H-22M22 0H34" stroke="#fff" stroke-width="3" stroke-linecap="round"/><circle r="10" fill="none" stroke="#3DDC6E" stroke-width="3.5"/></g></svg>'],
-  ['Si te equivocas, no pasa nada', MOUSE ? 'El botón «Deshacer» de arriba (o Ctrl+Z) regresa el último cambio. La tecla Esc cancela lo que estás haciendo. Todo se guarda solo y Claude lo puede ver.' : 'El botón «Deshacer» de arriba regresa el último cambio. Todo se guarda solo y Claude lo puede ver.',
+  ['Si te equivocas, no pasa nada', MOUSE ? 'El botón «Deshacer» de arriba (o Ctrl+Z) regresa el último cambio. La tecla Esc cancela lo que estás haciendo. Todo se guarda solo.' : 'El botón «Deshacer» de arriba regresa el último cambio. Todo se guarda solo.',
    '<svg viewBox="0 0 300 120"><g transform="translate(150 60)" fill="none" stroke="#fff" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"><path d="M-18 6-34-10l16-16"/><path d="M-34-10h36a22 22 0 0 1 0 44h-10"/></g></svg>']
 ];
 function showIntro(i) {
@@ -1665,7 +1652,6 @@ function showLegend() {
     ${row('<path d="M2 21H12M32 21H42" stroke="#FFF1C9" stroke-width="2.5"/><path d="M12 21Q22 -1 32 21" fill="none" stroke="#1a1300" stroke-width="6" stroke-linecap="round"/><path d="M12 21Q22 -1 32 21" fill="none" stroke="#FFD23F" stroke-width="3.5" stroke-linecap="round"/><circle cx="12" cy="21" r="3" fill="#FFD23F" stroke="#1a1300"/><circle cx="32" cy="21" r="3" fill="#FFD23F" stroke="#1a1300"/><path d="M20 7.5 23.5 10 20 12.5" fill="none" stroke="#FF9A3C" stroke-width="2" stroke-linecap="round"/>', 'Cable puente: pasa la corriente de un alambre a otro (la flecha dice hacia dónde)')}
     ${row('<circle cx="22" cy="13" r="10" fill="#141414" stroke="#FFF1C9" stroke-width="2"/><path d="M23.5 6 17.5 14.5 21.5 14.5 20 20 26.5 11.5 22.5 11.5Z" fill="#FFD23F"/>', 'Energizador (de donde sale la corriente)')}
     ${row('<path d="M4 13H24" stroke="#FFF1C9" stroke-width="3"/><path d="M24 13H40" stroke="#9aa29c" stroke-width="3" stroke-dasharray="4 3"/><circle cx="24" cy="13" r="4.6" fill="#0b0b0b"/>', 'Fin de línea: aquí termina la corriente. Si el alambre llega a otro, va pegado al cruce. Lo puedes poner con «Agregar algo»')}
-    ${row('<rect x="10" y="3" width="24" height="16" rx="3" fill="#9B6BFF" stroke="#111"/><text x="22" y="15" text-anchor="middle" font-size="10" font-weight="700" fill="#111">?3</text>', 'Pregunta de Claude (verde cuando ya contestaste)')}
   </ul><button class="b pri huge" id="mok" type="button">Entendido</button></div>`;
   $('mok').onclick = () => { modal.hidden = true; modal.textContent = ''; };
   $('mok').focus();
@@ -1716,38 +1702,36 @@ function linkEgates() {
   return n;
 }
 function renameCables() { net.wires.forEach(w => { if (w.kind === 'cable' && w.name === 'Cable sobre puerta') w.name = 'Cable puente'; }); }
-function loadLocal() { try { const j = JSON.parse(localStorage.getItem(LS_KEY) || 'null'); return j && j.net && j.net.wires ? j : null; } catch (e) { return null; } }
 async function boot() {
+  // El cerco sale de la fuente única (cerco.js): la copia del dispositivo si está al día, si no la publicada.
+  // Después la nube manda: lo del dispositivo solo se sube si son cambios hechos sobre la versión actual de la nube.
+  setSave('Cargando…');
+  const ini = await Cerco.inicial();
+  if (!ini) { setSave('Sin conexión', 'warn'); snack('No se pudo cargar el cerco. Conéctate a internet y vuelve a abrir.'); return; }
+  net = JSON.parse(JSON.stringify(ini.net)); SYNC = ini.base || 0;
+  const local = ini.desde === 'dispositivo' && Cerco.pendientes(ini) ? ini : null;   // cambios hechos aquí que tal vez no se han subido
   initStatic();
-  const local = loadLocal();
-  if (local) net = local.net;
   renameCables(); linkEgates(); reparentOrphans();
   fit(); setMode('idle');
   window.addEventListener('resize', () => { if (needFit) { fit(); render(); } });
   let seen = false; try { seen = !!localStorage.getItem(LS_INTRO); } catch (e) {}
   if (!seen) showIntro(0);
   setSave('Conectando…');
-  let db = null;
-  try { db = window.claude && window.claude.use ? await Promise.race([window.claude.use('db'), new Promise(r => setTimeout(() => r(null), 8000))]) : null; } catch (e) { db = null; }
-  if (!db) { setSave(local ? 'Guardado en el teléfono' : 'Sin conexión', 'warn'); return; }
-  docRef = db.doc(DOC_PATH);
-  try {
-    const snap = await Promise.race([docRef.get(), new Promise((_, j) => setTimeout(() => j({code: 'timeout'}), 10000))]);
-    const remote = snap.exists ? snap.data() : null;
-    // La nube manda. Lo del dispositivo solo se sube si son cambios hechos sobre la versión actual de la nube;
-    // si salió de otra versión (o de la red de base sin sesión), gana la nube y lo del dispositivo se guarda aparte.
-    const pendiente = remote && remote.net && local && local.base && local.base === remote.savedAt && (local.savedAt || 0) > (remote.savedAt || 0);
-    if (remote && remote.net && !pendiente) {
-      if (local && (local.savedAt || 0) > (remote.savedAt || 0) && JSON.stringify(local.net) !== JSON.stringify(remote.net)) {
-        try { localStorage.setItem('cerco-editor-respaldo', JSON.stringify(local)); } catch (e) {}
-        snack('Este dispositivo tenía otra versión del cerco. Se abrió la de la nube y la otra quedó respaldada.');
-      }
+  const n = await Cerco.nube();
+  if (!n) { setSave(local ? 'Guardado en el teléfono' : 'Sin sesión', 'warn'); return; }
+  if (!n.doc) { setSave('Guardado solo en el teléfono', 'warn'); return; }
+  docRef = n.doc;
+  const remote = n.remota;
+  const pendiente = remote && local && local.base === remote.savedAt && (local.savedAt || 0) > (remote.savedAt || 0);
+  if (remote && !pendiente) {
+    if (remote.savedAt !== SYNC || !Cerco.igual(remote.net, net)) {
+      if (Cerco.tomarDeNube(remote)) snack('Este dispositivo tenía otra versión del cerco. Se abrió la de la nube y la otra quedó respaldada.');
       SYNC = remote.savedAt || 0;
-      net = JSON.parse(JSON.stringify(remote.net)); renameCables(); const fixed = linkEgates() + reparentOrphans(); lsWrite(SYNC); if (fixed) queueSave(); if (sel && !exists(sel)) sel = null; render(); renderDock(); setSave('Guardado', 'ok');
-    } else if (pendiente) { SYNC = remote.savedAt; doSave(); }
-    else if (local) doSave();
-    else setSave('Guardado', 'ok');
-  } catch (e) { setSave('Guardado solo en el teléfono', 'warn'); }
+      net = JSON.parse(JSON.stringify(remote.net)); renameCables(); const fixed = linkEgates() + reparentOrphans(); if (fixed) queueSave(); if (sel && !exists(sel)) sel = null; render(); renderDock();
+    }
+    setSave('Guardado', 'ok');
+  } else if (pendiente || (!remote && local)) doSave();
+  else setSave('Guardado', 'ok');
 }
 boot();
 </script>

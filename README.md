@@ -7,18 +7,28 @@ Mapa y editor del cerco eléctrico. Se publica como **PWA**: una página web que
 
 ## Estructura
 
-| Carpeta | Qué es |
+**El cerco vive en un solo lugar.** Mapa y editor lo leen de la misma fuente, con el mismo código (`herramientas/web/cerco.js`):
+
+1. **La nube** (Supabase, documento `cerco/red`) es la verdad. Lo que se guarda en el editor va ahí.
+2. **`publicar/datos/cerco.json`**: copia de la nube al momento de publicar. La usa quien no tiene sesión o abre sin señal.
+3. **Una sola copia en cada dispositivo** (`cerco-red`), compartida por mapa y editor. Recuerda de qué versión de la nube salió, así una copia vieja nunca tapa una más nueva (si pasa, se guarda aparte como respaldo).
+
+La foto también es una sola: `publicar/datos/rancho.jpg`.
+
+| Carpeta / archivo | Qué es |
 |---|---|
-| `mapa/`, `editor/` | Las dos apps (generadas desde `fuente/`). |
-| `fuente/` | Plantillas y scripts que generan `mapa/` y `editor/`. |
-| `herramientas/construir.py` | Baja de Supabase la última red del editor, y regenera `mapa/index.html` y `editor/index.html` desde `fuente/template2.html` y `fuente/editor/editor3.tpl.html`. Los cambios a las apps se hacen en esas plantillas. |
-| `fuente/red-mapa.js` | Convierte la red del editor al formato del mapa. **El cerco vive en un solo lugar: el editor.** El mapa siempre dibuja lo último que se guardó ahí (`fuente/network2.json` ya no se usa). |
-| `herramientas/publicar.py` | Arma `publicar/`: envuelve las apps, agrega manifest, íconos, service worker y el conector a Supabase. |
-| `herramientas/web/nube.js` | Conector a Supabase. Mapa y editor lo usan sin cambios en su código. |
+| `fuente/template2.html` | Página del mapa (sin datos adentro). |
+| `fuente/editor/editor3.tpl.html` | Página del editor (sin datos adentro). |
+| `fuente/red-mapa.js` | Pasa la red del editor al formato del mapa (tramos, switches, puertas). |
+| `fuente/rancho.jpg` | La foto del rancho, única para todas las secciones. |
+| `herramientas/web/cerco.js` | Cómo se carga y guarda el cerco: la fuente única. |
+| `herramientas/web/nube.js` | Conexión con Supabase (sesión y base de datos). |
+| `herramientas/construir.py` | Arma las páginas y lee el cerco actual de la nube. |
+| `herramientas/publicar.py` | Arma `publicar/`: páginas, `datos/`, íconos, manifest y service worker. |
+| `herramientas/sb.py` | Administra el Supabase de este proyecto con el token de `.env`. |
+| `herramientas/respaldo.py` | Respaldos de los datos del cerco (ver abajo). |
 | `publicar/` | **Lo que sube Cloudflare.** Se genera; no editar a mano. |
-| `supabase/migrations/` | Tablas y permisos de la base. |
-| `supabase/alta-dueno.sql` | Te da de alta como dueño del proyecto (una vez). |
-| `herramientas/sb.py` | Administra el Supabase de este proyecto con el token de `.env` (SQL, configuración, avisos de seguridad). |
+| `supabase/` | Tablas, permisos y alta del dueño. |
 | `.env` | Token de Supabase y contraseña de la base. **No se sube a GitHub.** |
 
 ## Publicar un cambio
@@ -48,17 +58,6 @@ Luego haz commit y push. Cloudflare publica solo en uno o dos minutos. `wrangler
 5. **Authentication → URL Configuration:** en Site URL pon tu dirección `https://<nombre>.pages.dev`.
 6. **Project Settings → API:** copia la **Project URL** y la clave **anon / publishable** (nunca la `service_role` ni `sb_secret_…`).
 7. Copia `config.nube.ejemplo.json` como `config.nube.json`, pega esos dos valores, corre `python herramientas/publicar.py` y sube el cambio.
-
-### 4. Pasar tus datos actuales a la nube
-Tu última versión está en `fuente/editor/guardado-diego-ultimo.json`. Para subirla:
-
-```powershell
-python herramientas/importar.py
-```
-
-Abre `supabase/importar-datos.sql`, pega todo en Supabase → SQL Editor y córrelo. Debe devolver una fila con el número de alambres. Después, al iniciar sesión, cualquier dispositivo baja esa versión.
-
-> Ojo: el editor compara fechas. Si un dispositivo tiene una copia local **más nueva** que la de la nube, la sube y reemplaza la de la nube.
 
 ## Instalar en los dispositivos
 

@@ -134,46 +134,14 @@ const RED_MAPA = (() => {
     net.parts.filter(p => p.type === 'end').forEach(p => { const q = partPos(p); if (q) ends.push(rp([q])[0]); });
     net.parts.filter(p => p.type === 'gate').forEach(p => { const q = partPos(p); if (q) gates.push(rp([q])[0]); });
 
-    /* notas del editor: las de Claude sin contestar son dudas; las contestadas, ya confirmadas */
-    const doubts = [], resolved = [];
-    net.parts.filter(p => p.type === 'note' && (p.text || '').trim()).forEach((p, i) => {
-      const m = p.text.match(/^\?(\d+)\s*/), n = m ? +m[1] : 100 + i, text = p.text.replace(/^\?\d+\s*/, '');
-      if ((p.answer || '').trim()) resolved.push({n, text: text.split(/[.:?]/)[0] + ' — ' + p.answer.trim()});
-      else doubts.push({n, pos: [r1(p.x), r1(p.y)], text: (p.by === 'claude' ? '' : 'Nota: ') + text});
-    });
-
     const unicas = (lista, r) => lista.filter((q, i) => !lista.slice(0, i).some(o => dist(o, q) < r));
     return {
       mpp, size: net.size, gates: unicas(gates, 3), ends: unicas(ends, 2),
       energizers: net.energizers.map(e => ({id: e.id, name: e.name, pos: [r1(e.x), r1(e.y)], off: e.on === false})),
-      lines, switches, abiertos, doubts, resolved,
+      lines, switches, abiertos, doubts: [], resolved: [],
       barb: net.wires.filter(w => w.kind === 'barb').map(w => ({name: w.name, pts: rp(w.pts), m: Math.round(plen(w.pts) * mpp)})),
     };
   }
 
-  /* qué red usar: la incluida al publicar, la del editor en este dispositivo, o la última bajada de la nube */
-  const leer = k => { try { const j = JSON.parse(localStorage.getItem(k) || 'null'); return j && j.net && j.net.wires ? j : null; } catch (e) { return null; } };
-  const CLAVE_NUBE = 'cerco-mapa-red';
-  function elegir(incluida) {
-    // La nube manda: la incluida al publicar y la última bajada de la nube son versiones de la nube.
-    // La copia del editor en este dispositivo solo cuenta si salió de la versión más nueva de la nube
-    // (cambios hechos aquí que tal vez no se han subido). Una copia vieja con fecha nueva no la tapa.
-    const nube = [incluida, leer(CLAVE_NUBE)].filter(Boolean).reduce((a, b) => (b.savedAt || 0) > (a.savedAt || 0) ? b : a);
-    const local = leer('cerco-editor-v3');
-    return local && local.base && local.base >= (nube.savedAt || 0) && (local.savedAt || 0) > (nube.savedAt || 0) ? local : nube;
-  }
-  /* después de dibujar: si la nube tiene una versión más nueva, se guarda y se ofrece recargar */
-  async function revisarNube(usada, avisar) {
-    try {
-      const use = window.claude && window.claude.use ? window.claude.use('db') : null;
-      const db = use ? await Promise.race([use, new Promise(r => setTimeout(() => r(null), 6000))]) : null;
-      if (!db) return;
-      const snap = await db.doc('cerco/red').get();
-      const r = snap.exists ? snap.data() : null;
-      if (!r || !r.net || !r.net.wires) return;
-      try { localStorage.setItem(CLAVE_NUBE, JSON.stringify(r)); } catch (e) {}
-      if ((r.savedAt || 0) > (usada.savedAt || 0) + 1000) avisar();
-    } catch (e) { console.warn('Mapa: no se pudo revisar la nube', e); }
-  }
-  return {convertir, elegir, revisarNube};
+  return {convertir};
 })();

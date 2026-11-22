@@ -15,6 +15,8 @@
 <style>:root{color-scheme:light dark}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
 <script src="/config.js"></script>
 <script src="/nube.js"></script>
+<script src="/cerco.js"></script>
+<script src="/red-mapa.js"></script>
 </head>
 <body>
 <title>Cerco Eléctrico del Rancho</title>
@@ -238,7 +240,7 @@ h1{margin:0;font:700 clamp(28px,4vw,40px)/1 var(--f-display);letter-spacing:.01e
     <section class="mapwrap" id="mapwrap" aria-label="Mapa del cercado">
       <svg id="map" viewBox="0 0 976 1170" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Cercas eléctricas del rancho sobre la foto satelital">
         <g id="vp">
-          <image class="photo" href="rancho.jpg" x="0" y="0" width="976" height="1170" preserveAspectRatio="none"/>
+          <image class="photo" href="/datos/rancho.jpg" x="0" y="0" width="976" height="1170" preserveAspectRatio="none"/>
           <g id="g-road"></g>
           <g id="g-cut"></g>
           <g id="g-sel"></g>
@@ -285,17 +287,8 @@ h1{margin:0;font:700 clamp(28px,4vw,40px)/1 var(--f-display);letter-spacing:.01e
         <h2>Correcciones</h2>
         <p class="fix-status" id="fix-status" role="status">Cargando correcciones…</p>
         <ul class="fix-list" id="fix-list"></ul>
-        <div class="fix-btns"><button type="button" class="btn primary" id="mark2" aria-pressed="false" disabled>Marcar corrección</button><button type="button" class="btn" id="fix-copy" hidden>Copiar para Claude</button></div>
-        <textarea id="fix-copy-out" class="copy-out" rows="5" readonly hidden aria-label="Texto de las correcciones"></textarea>
-        <p class="note">Toca «Marcar corrección», luego el lugar del mapa, y escribe qué está mal. Cuando termines, avísame en el chat y las reviso todas.</p>
-      </section>
-
-      <section class="card">
-        <h2>Dudas de Claude</h2>
-        <label class="dz-toggle" for="doubt-toggle"><input type="checkbox" id="doubt-toggle" checked> Mostrar las dudas en el mapa</label>
-        <ul class="dz-list" id="doubt-list"></ul>
-        <p class="note">Son los puntos donde tu dibujo no me quedó claro. Contéstame por número.</p>
-        <p class="note dz-done" id="doubt-done" hidden></p>
+        <div class="fix-btns"><button type="button" class="btn primary" id="mark2" aria-pressed="false" disabled>Marcar corrección</button></div>
+        <p class="note">Toca «Marcar corrección», luego el lugar del mapa, y escribe qué está mal.</p>
       </section>
 
       <section class="card">
@@ -325,189 +318,10 @@ h1{margin:0;font:700 clamp(28px,4vw,40px)/1 var(--f-display);letter-spacing:.01e
 </div>
 
 <script>
-// La red sale del editor: la incluida al publicar, la del editor en este dispositivo o la última de la nube (la más nueva)
-const RED_INCLUIDA = {"net":{"energizers":[{"id":"E1","name":"Sepeedrite Rojo","on":true,"x":336.14439824776815,"y":493.5137706584667},{"id":"E2","name":"Electro Choke","on":true,"x":284.3571428571429,"y":465.62857001168385}],"mpp":1.8475750577367205,"parts":[{"grp":"S2","id":"s2_1","name":"Callejón norte","on":"LB3","open":false,"s":0.5510357178905769,"type":"switch"},{"grp":null,"id":"s4_0","name":"Ramal camino → casa","on":"H1","open":false,"s":5.1,"type":"switch"},{"grp":null,"id":"s3_0","name":"División norte 2","on":"N3a","open":false,"s":0.8693599106289706,"type":"switch"},{"grp":null,"id":"s1_0","name":"División norte 1","on":"N2a","open":false,"s":1.1703053302503588,"type":"switch"},{"grp":"S6","id":"s6_1","name":"Troncal central","on":"TR1","open":false,"s":2.5,"type":"switch"},{"grp":null,"id":"s8_0","name":"Cruce central → oeste (alambre norte)","on":"TRNWu","open":false,"s":4.9,"type":"switch"},{"grp":null,"id":"s14_0","name":"Nodo suroeste → sur","on":"S5","open":false,"s":5,"type":"switch"},{"grp":null,"id":"s12_0","name":"Perímetro, esquina oeste","on":"PER_S","open":false,"s":5,"type":"switch"},{"a":{"on":"N2b","s":56.3},"b":{"on":"N2a","s":33.2},"id":"g1","type":"gate"},{"a":{"on":"E3","s":7.2},"b":{"on":"E2L","s":100.8},"id":"g6","type":"gate"},{"a":{"on":"W1","s":199.6},"b":{"on":"PS","s":23.9},"id":"g14","type":"gate"},{"a":{"on":"W1","s":81.2},"b":{"on":"L1","s":222.6},"id":"g16","type":"gate"},{"a":{"on":"PER_S","s":801.7},"b":{"on":"S4","s":224.2},"id":"g19","type":"gate"},{"answer":"Sí, está bien","by":"claude","id":"q3","text":"?3 Esta marca amarilla gruesa sobre el camino la tomé como cablecito sobre una puerta, no como rayito. ¿Correcto?","type":"note","x":505,"y":424},{"answer":"","by":"claude","id":"q4","text":"?4 Este switch me quedó como el principal: corta el camino, el centro y todo el sur (unos 8 km). ¿Es así, o solo corta el camino?","type":"note","x":404,"y":528},{"answer":"","by":"claude","id":"q5","text":"?5 ¿Este switch corta solo el ramal que va hacia la casa, o todo el alambre norte del camino?","type":"note","x":417,"y":509},{"answer":"","by":"claude","id":"q6","text":"?6 Hay una rayita roja en el callejón. La puse como switch que corta los dos alambres del callejón hacia el norte. ¿Es un switch?","type":"note","x":406,"y":365},{"answer":"","by":"claude","id":"q7","text":"?7 Centro: supuse que el alambre norte del callejón brinca la puerta y sube por el alambre de afuera hasta la línea del perímetro este, y que el switch corta la troncal y la línea al sureste.","type":"note","x":507,"y":588},{"answer":"","by":"claude","id":"q8","text":"?8 Aquí conté 4 switches: dos hacia el oeste (uno por alambre), uno al suroeste y uno al sureste. ¿Son 4?","type":"note","x":384,"y":704},{"answer":"","by":"claude","id":"q9","text":"?9 Nodo suroeste: puse el switch de arriba cortando todo el nodo (línea oeste, línea al este y línea al sur).","type":"note","x":248,"y":854},{"answer":"","by":"claude","id":"q10","text":"?10 Zona de la casa, cobertizo y corral: es donde menos seguro estoy de qué se conecta con qué.","type":"note","x":318,"y":516},{"answer":"","by":"claude","id":"q11","text":"?11 Rayita roja en la esquina oeste del perímetro: la puse como switch que corta el lado sur y este del perímetro.","type":"note","x":39,"y":756},{"answer":"","by":"claude","id":"q12","text":"?12 Tres ramales salen del perímetro hacia adentro (este, el del potrero oeste y el del corral). Los puse en el circuito del perímetro.","type":"note","x":197,"y":910},{"answer":"","by":"claude","id":"q13","text":"?13 Vi signos de interrogación tuyos en los potreros del norte y junto al ramal oeste. ¿Falta algo ahí?","type":"note","x":485,"y":288},{"a":{"on":"LB3","s":134.00300723078897},"b":{"on":"w15zvs","s":110.52730388102633},"id":"g7aw72","type":"gate"},{"a":{"on":"E2L","s":0},"b":{"on":"RSE2","s":0},"id":"gamy19","type":"gate"},{"a":{"on":"N4a","s":0},"b":{"on":"w15zvs","s":0},"id":"ga791c","type":"gate"},{"a":{"on":"LB2","s":36.235341863986875},"b":{"on":"LB3","s":0},"id":"g6csl8","type":"gate"},{"a":{"on":"LB1","s":55.923035125165875},"b":{"on":"LB2","s":0},"id":"gchcft","type":"gate"},{"a":{"on":"LB1","s":25.989951592079677},"b":{"on":"LA1","s":0},"id":"gohu1j","type":"gate"},{"id":"swlpshk","name":"Switch 20","on":"cewuwz","open":false,"s":3.652315655968801,"type":"switch"},{"a":{"on":"wrafpl","s":41.13684561069127},"b":{"on":"LB1","s":0},"id":"gsqxd7","type":"gate"},{"a":{"on":"wnstr0","s":0},"b":{"on":"wq5zjj","s":8.95452297112736},"id":"goegw0","type":"gate"},{"a":{"on":"N4b","s":54.59850859641468},"b":{"on":"N4a","s":33.56830384133813},"id":"gaq5mv","type":"gate"},{"id":"swauyiu","name":"Switch 17","on":"RNW","open":false,"s":1.3144683180742696,"type":"switch"},{"id":"fw9wdq","on":"wet7ce","s":34.57152757961707,"type":"end"},{"a":{"on":"H1","s":63.308510014158},"b":{"on":"wet7ce","s":34.57152757961707},"id":"gjhugq","type":"gate"},{"a":{"on":"N3a","s":25.5531101342009},"b":{"on":"N3b","s":67.88254562109469},"id":"gj2los","type":"gate"},{"a":{"on":"wrvvl4","s":6.267186188085999},"b":{"on":"bzaaw1","s":31.675307452290568},"id":"g5ftrp","type":"gate"},{"a":{"on":"C1","s":83.85125426634293},"b":{"on":"C1b","s":38.41050742107659},"id":"g5lqkh","type":"gate"},{"a":{"on":"C1","s":83.85125426634293},"b":{"on":"H3","s":47.540796261723415},"id":"g9ttx5","type":"gate"},{"id":"swcbs2f","name":"Switch 17","on":"PER_W","open":false,"s":1.4890823740524064,"type":"switch"},{"id":"swcpb20","name":"Switch 18","on":"PER_N","open":false,"s":0.9986026276799114,"type":"switch"},{"a":{"on":"RSE1","s":0},"b":{"on":"wan5a7","s":58.520890802807386},"id":"g5es7n","type":"gate"},{"a":{"on":"w523w9","s":11.056740730729299},"b":{"on":"E5","s":0},"id":"g3kzss","type":"gate"},{"a":{"on":"E1L","s":0},"b":{"on":"E3","s":37.27672916834935},"id":"gckov2","type":"gate"},{"a":{"on":"PL","s":0},"b":{"on":"wgt4qm","s":26.781971144674518},"id":"gw7i6z","type":"gate"},{"id":"sw4vkpj","name":"Switch 19","on":"chj9vp","open":false,"s":3.1512321572109556,"type":"switch"},{"id":"swq80li","name":"Switch 19","on":"PL","open":false,"s":84.6470460301206,"type":"switch"},{"a":{"on":"E5","s":0},"b":{"on":"w1mubo","s":6.437773744184555},"id":"gxw151","type":"gate"},{"a":{"on":"SE1","s":0},"b":{"on":"PL","s":94.27199754671658},"id":"gz4fum","type":"gate"},{"a":{"on":"wjnz0f","s":46.19957948915162},"b":{"on":"wsmz5o","s":21.984232969614318},"id":"g5h6jo","type":"gate"},{"a":{"on":"wsmz5o","s":21.984232969614318},"b":{"on":"w8uswg","s":0},"id":"gapnj7","type":"gate"},{"a":{"on":"wtgxyw","s":38.44370511832264},"b":{"on":"w8uswg","s":0},"id":"gvzh9u","type":"gate"},{"a":{"on":"C3","s":33.678628238097815},"b":{"on":"C2","s":61.71773162628366},"id":"gd9wa0","type":"gate"},{"a":{"on":"L2a","s":0},"b":{"on":"TRNWu","s":46.32435625969497},"id":"gsrmyh","type":"gate"},{"id":"swaq4bv","name":"Switch 19","on":"S1","open":false,"s":2.006721981951705,"type":"switch"},{"a":{"on":"TR1","s":152.67328252144955},"b":{"on":"S1","s":0},"id":"gx0ug2","type":"gate"},{"a":{"on":"TR1","s":152.67328252144955},"b":{"on":"S2","s":0},"id":"gyqhs6","type":"gate"},{"a":{"on":"wlm8u8","s":41.67345640805597},"b":{"on":"w2u93f","s":0},"id":"g7swta","type":"gate"},{"a":{"on":"L2a","s":41.8543822076167},"b":{"on":"L2b","s":211.62627509624656},"id":"gcvi1d","type":"gate"},{"a":{"on":"w2u93f","s":43.77589355119243},"b":{"on":"L2b","s":211.62627509624656},"id":"giruen","type":"gate"},{"a":{"on":"S3","s":75.6242794398298},"b":{"on":"S2","s":84.82973649632393},"id":"guiih5","type":"gate"},{"a":{"on":"wo8270","s":0},"b":{"on":"wbe2pb","s":7.572528286527938},"id":"g93gyy","type":"gate"},{"a":{"on":"S2","s":189.44661575269757},"b":{"on":"L2b","s":0},"id":"gugich","type":"gate"},{"a":{"on":"w5ccn0","s":9.471048266573424},"b":{"on":"brjn8y","s":31.187530546361725},"id":"gwnfg1","type":"gate"},{"a":{"on":"wdg0by","s":9.069265985098726},"b":{"on":"brjn8y","s":22.308389048169836},"id":"g0vnrl","type":"gate"},{"a":{"on":"S6","s":122.12636897902107},"b":{"on":"brjn8y","s":9.054534459884144},"id":"gabwlm","type":"gate"},{"a":{"on":"wj9ywv","s":6.350573013836143},"b":{"on":"ws7kap","s":0},"id":"gm5e66","type":"gate"},{"id":"swvoaa0","name":"Switch 17","on":"wbe2pb","open":false,"s":4.031035003265036,"type":"switch"},{"id":"swmhrr3","name":"Switch 18","on":"ww9avs","open":false,"s":5.154332175020293,"type":"switch"},{"id":"swvlyfs","name":"Switch 19","on":"c1aebn","open":false,"s":2.763989854868553,"type":"switch"},{"a":{"on":"L2b","s":35.21705665185052},"b":{"on":"wbwl01","s":10.683699790370229},"id":"ghbpqi","type":"gate"},{"a":{"on":"L1","s":216.19762905683191},"b":{"on":"L2b","s":72.08466772442787},"id":"g23awk","type":"gate"},{"a":{"on":"SHA","s":0},"b":{"on":"ENC","s":66.06408133872416},"id":"gnr64t","type":"gate"},{"a":{"on":"wtfpsi","s":13.13120228679717},"b":{"on":"bkucab","s":16.774078559471697},"id":"ghwegl","type":"gate"},{"a":{"on":"wwaxf2","s":13.937139498227221},"b":{"on":"wtfpsi","s":0},"id":"go26g7","type":"gate"},{"a":{"on":"wtfpsi","s":93.48380344365567},"b":{"on":"wtfpsi","s":0},"id":"ggr7pz","type":"gate"},{"a":{"on":"wq5m10","s":6.325916840755899},"b":{"on":"ENC","s":0},"id":"gwplrv","type":"gate"},{"a":{"on":"PSt1","s":17.18254928699463},"b":{"on":"CL","s":0},"id":"g1fgxh","type":"gate"},{"a":{"on":"w6ot9t","s":77.06223284316829},"b":{"on":"CL","s":0},"id":"gvrads","type":"gate"},{"a":{"on":"wtfpsi","s":63.11487340246728},"b":{"on":"w6ot9t","s":77.06223284316829},"id":"g0xvro","type":"gate"},{"a":{"on":"ENC","s":0},"b":{"on":"w6ot9t","s":0},"id":"g9ucbq","type":"gate"},{"a":{"on":"w6ot9t","s":0},"b":{"on":"L1","s":0},"id":"g6kvww","type":"gate"},{"a":{"on":"CW1b","s":73.19997883028991},"b":{"on":"CL","s":43.16126423977648},"id":"gcezsh","type":"gate"},{"a":{"on":"CW1a","s":60.96764095822361},"b":{"on":"CL","s":43.16126423977648},"id":"g3ilx7","type":"gate"},{"a":{"on":"W1","s":240.50968617617121},"b":{"on":"WX","s":92.15253659015579},"id":"g8x3ol","type":"gate"},{"id":"swxh9o9","name":"Switch 19","on":"L1","open":false,"s":116.40612877077166,"type":"switch"}],"size":[976,1170],"v":1,"wires":[{"from":"SHA","id":"ENC","kind":"fence","name":"Cobertizo, lado oeste","pts":[[336,557],[300.99952314535096,531.6747633300276],[314.506445450483,513.2290574998862]]},{"from":"czpbix","id":"SHA","kind":"fence","name":"Cobertizo, lado este","pts":[[320,517],[351,539],[336,557]]},{"from":"c4yj6j","id":"CL","kind":"fence","name":"Corral → potrero oeste","pts":[[263.4257416966932,527.113929195164],[236.9670273097807,561.214239512925]]},{"from":"c982g5","id":"LA1","kind":"fence","name":"Callejón norte, alambre este (1)","pts":[[346,446],[410,371]]},{"from":"LA1","id":"LA2","kind":"fence","name":"Callejón norte, alambre este","pts":[[410,371],[426.6559551817739,348.5328461799724]]},{"from":null,"id":"w15zvs","kind":"fence","name":"Callejón norte, alambre este (2)","pts":[[430.37055448683253,343.21918048222443],[432.11836765942246,341.16461901891097],[434.4179657159579,338.0632457228406],[492.01822817927194,261.51030217502534]]},{"from":"cy4h64","id":"LB1","kind":"fence","name":"Callejón norte, alambre oeste (1)","pts":[[322.6389386915755,460.324141084993],[358,417]]},{"from":"LB1","gate":[363,413],"id":"c_LB2","kind":"cable","name":"Cable puente","pts":[[358,417],[368,407]]},{"from":"c_LB2","id":"LB2","kind":"fence","name":"Callejón norte, alambre oeste (2)","pts":[[368,407],[391,379]]},{"from":"LB2","gate":[398,371],"id":"c_LB3","kind":"cable","name":"Cable puente","pts":[[391,379],[404,363]]},{"from":"c_LB3","id":"LB3","kind":"fence","name":"Callejón norte, alambre oeste (3)","pts":[[404,363],[486.89027003588603,257.70988137402077]]},{"from":"LB3","id":"N1","kind":"fence","name":"Esquina norte","pts":[[486.89027003588603,257.70988137402077],[466.1202026740781,242.33042900686613]]},{"from":"w15zvs","id":"N2b","kind":"fence","name":"División norte 1, desde el callejón","pts":[[492.01822817927194,261.51030217502534],[539,293]]},{"from":"w15zvs","id":"N3b","kind":"fence","name":"División norte 2, desde el callejón","pts":[[458,307.2],[509,352]]},{"from":"LA2","id":"N4a","kind":"fence","name":"División norte 3, desde el callejón","pts":[[423.55135303893337,352.7206320578734],[451.0073183527114,372.0338656419476]]},{"from":"wan5a7","id":"RNW","kind":"fence","name":"Camino, alambre norte","pts":[[405.09016898531934,527.8729858395174],[734.2168882491175,158.7116918574064]]},{"from":"c45184","id":"RSE1","kind":"fence","name":"Camino, alambre sur (1)","pts":[[408.8437403036006,530.9134619382827],[500,431]]},{"from":"cisbfy","id":"RSE2","kind":"fence","name":"Camino, alambre sur (2)","pts":[[506.793515120177,422.8117876338158],[738.6758220971878,161.0708226785711]]},{"from":"RSE1","id":"H3","kind":"fence","name":"Ramal camino → centro","pts":[[415.9975256272016,523.5936365245619],[456.75486003825625,548.0674388630657]]},{"from":"RNW","id":"H1","kind":"fence","name":"Ramal camino → casa","pts":[[420.8589626368239,510.1860952645211],[372.9376041746474,468.81568502541023]]},{"from":"wjhn3t","id":"N4b","kind":"fence","name":"División norte 3, desde el camino","pts":[[499.1564187471097,415.77899208815234],[462,382]]},{"from":"RNW","id":"N3a","kind":"fence","name":"División norte 2, desde el camino","pts":[[539.7784143751354,376.80142573189755],[520.2187266626468,360.3581883949094]]},{"from":"RNW","id":"N2a","kind":"fence","name":"División norte 1, desde el camino","pts":[[586.1793323690761,324.75635638317783],[556.0186471695287,304.07033432787154]]},{"from":"RSE1","id":"E4","kind":"fence","name":"Ramal que cruza el camino","pts":[[474.0702894896681,459.58161272161584],[492,473],[530,495],[570.1214094961565,503.5721820565953]]},{"from":"E4","id":"C1","kind":"fence","name":"Diagonal del potrero central","pts":[[520,489.2],[465.0893218160663,552.5707366488615]]},{"from":"RSE1","id":"E2L","kind":"fence","name":"Camino → potrero este","pts":[[500,431],[577,496]]},{"from":"E2L","id":"E6","kind":"fence","name":"Callejón este, alambre de adentro","pts":[[577,496],[505,579]]},{"from":"E6","id":"C1b","kind":"fence","name":"Remate de la diagonal central","pts":[[505,579],[473.0653142883824,557.6565483380783]]},{"from":"chd2c4","id":"PL","kind":"fence","name":"Callejón casa–centro, alambre sur","pts":[[415.074917554691,551.4047762338222],[498.40038865508217,595.4964465054961]]},{"from":"ckd6h8","id":"E5","kind":"fence","name":"Callejón este, alambre de afuera","pts":[[502.6122182021787,589.9496177394827],[578.2041264908058,504.7525359768458]]},{"from":"E5","id":"E3","kind":"fence","name":"Subida a la puerta del este","pts":[[578.2041264908058,504.7525359768458],[603.2972938805199,477.18647917065283]]},{"from":"E3","gate":[603,476],"id":"c_E1L","kind":"cable","name":"Cable puente","pts":[[603.2972938805199,477.18647917065283],[612,482]]},{"from":"c_E1L","id":"E1L","kind":"fence","name":"Potrero este → perímetro","pts":[[612,482],[744,569]]},{"from":"cglpxw","id":"SE1","kind":"fence","name":"Centro → perímetro sureste","pts":[[505.56838344315446,599.5723570156506],[653,686]]},{"from":"PL","id":"TR1","kind":"fence","name":"Troncal central","pts":[[487.58249714916116,589.772159573603],[383,701]]},{"from":"TR1","id":"C2","kind":"fence","name":"Troncal → ramal oeste","pts":[[404.6,676.8],[351.95355786053943,644.5908316290158]]},{"from":"TR1","id":"TRNWu","kind":"fence","name":"Cruce central → oeste, alambre norte","pts":[[383,701],[344.0614168187415,675.9055240598383]]},{"from":"TRNWu","gate":[337,672],"id":"c_L2a","kind":"cable","name":"Cable puente","pts":[[344.0614168187415,675.9055240598383],[330.96290823718425,667.7133291985884]]},{"from":"c_L2a","id":"L2a","kind":"fence","name":"Callejón oeste, alambre este","pts":[[330.45208977604784,667.6881818107906],[297.3079681168271,642.1292986305725],[304,630],[359.9269358908337,544.4875092579805]]},{"from":"L2a","id":"C3","kind":"fence","name":"Ramal del callejón oeste","pts":[[311.4,616.7],[339,636]]},{"from":"c0rvo5","id":"S2","kind":"fence","name":"Cruce central → nodo suroeste","pts":[[378.8904213618983,706.4315641483811],[253,848]]},{"from":"c0l726","id":"S1","kind":"fence","name":"Cruce central → perímetro sureste","pts":[[392.0802814093435,706.2695089123639],[561.1604417199587,808.0970761058088]]},{"from":"ct0u7r","id":"W1","kind":"fence","name":"Línea oeste","pts":[[234.40082391907725,845.9659481868418],[217,816],[165,662],[186.40611039142252,624.3434082315804]]},{"from":"c1aebn","id":"L2b","kind":"fence","name":"Callejón oeste (sur), alambre este","pts":[[245.7464754084639,842.1421706921535],[234.38543922245495,808.2659345608627],[220.2137130489318,774.7878262965335],[292.15023506102466,650.0643714904057]]},{"from":"wo8270","id":"S4","kind":"fence","name":"Nodo suroeste → perímetro este","pts":[[277.7220775244374,865.2608761448396],[488,871]]},{"from":"ws7kap","id":"M5","kind":"fence","name":"Nodo suroeste → switch sur","pts":[[256.96952088692296,879.5683661241297],[237.3993749758464,903.7048867761882]]},{"from":"M5","id":"S5","kind":"fence","name":"Nodo suroeste → perímetro sur","pts":[[237.3993749758464,903.7048867761882],[391.93697391381266,1013.2001098248668]]},{"from":"cj7hwt","id":"L1","kind":"fence","name":"Callejón oeste, alambre oeste","pts":[[328.6663651349098,570.9701474671141],[208.50152083413502,765.3169793564274]]},{"from":"L2b","id":"S3","kind":"fence","name":"Ramal oeste → centro","pts":[[255.11655763368188,714.2733165953335],[277.31135448926756,730.9890170949641],[315,763]]},{"from":"L1","id":"CW1b","kind":"fence","name":"Potrero oeste, lado norte (este)","pts":[[302.5790605562596,613.1620633048443],[243.73271609588446,569.5807548668677]]},{"from":"L1","id":"WX","kind":"fence","name":"Diagonal del potrero oeste","pts":[[264.8,672.5],[192,616]]},{"from":"WX","id":"CW1a","kind":"fence","name":"Potrero oeste, lado norte (oeste)","pts":[[192,616],[230.80541384691043,568.9766749348701]]},{"from":"wpid2z","id":"PER_N","kind":"perimeter","name":"Perímetro norte","pts":[[283.2429680059813,462.70991554212685],[466,242],[324,126],[321,114],[581,15],[734.2168882491175,158.7116918574064]]},{"from":"wpid2z","id":"PER_W","kind":"perimeter","name":"Perímetro oeste","pts":[[283.2429680059813,462.70991554212685],[278,469],[39,755]]},{"from":"PER_W","id":"PER_S","kind":"perimeter","name":"Perímetro sur y este","pts":[[39,755],[52,856],[64,882],[300,1133],[957,317],[955,306],[739.1901086834043,161.35653696428537]]},{"from":"PER_W","id":"PSt1","kind":"fence","name":"Ramal del perímetro junto al corral","pts":[[243.8,510],[257,521]]},{"from":"PER_W","id":"PS","kind":"fence","name":"Ramal del perímetro al potrero oeste","pts":[[151.1,620.8],[157,644]]},{"from":"PER_S","id":"S6","kind":"fence","name":"Ramal del perímetro al nodo suroeste","pts":[[137.7,960.4],[223,873]]},{"from":"E2L","id":"cisbfy","kind":"cable","name":"Cable puente","pts":[[500,431],[506.793515120177,422.8117876338158]]},{"from":"LB1","id":"c982g5","kind":"cable","name":"Cable puente","pts":[[338.6771454871228,440.6742349947863],[346,446]]},{"from":"cewuwz","id":"wc1xc7","kind":"fence","name":"Alambre nuevo 1","pts":[[345.3807635673235,490.6943617605896],[342.60391234015066,488.3031815359797]]},{"from":"wc1xc7","id":"wrafpl","kind":"fence","name":"Alambre nuevo 2","pts":[[342.60391234015066,488.3031815359797],[336.5873993863037,484.06076814074083],[341.44689050508555,479.04700685545856],[315.5741040213676,462.17365086516446],[302.34725796596416,475.72708063642705],[283.4008702893034,462.47873640600073]]},{"from":"E1","id":"cewuwz","kind":"cable","name":"Cable puente","pts":[[336.14439824776815,493.5137706584667],[345.3807635673235,490.6943617605896]]},{"from":"wrafpl","id":"cy4h64","kind":"cable","name":"Cable puente","pts":[[318.72960273182065,464.23156036408506],[322.6389386915755,460.324141084993]]},{"from":"LA1","id":"wq5zjj","kind":"fence","name":"Alambre nuevo 3","pts":[[346,446],[353.0141177269469,451.56647412218695]]},{"from":"wrafpl","id":"wet7ce","kind":"fence","name":"Alambre nuevo 4","pts":[[342.60391234015066,488.3031815359797],[366.6530127781195,463.4670931299382]]},{"from":"csyrip","id":"wnstr0","kind":"fence","name":"Alambre nuevo 5","pts":[[359.19841180364233,456.7897109455162],[366.6530127781195,463.4670931299382]]},{"from":"chj9vp","id":"wan5a7","kind":"fence","name":"Alambre nuevo 6","pts":[[358.90283423332374,492.00765475323027],[358.95281365359693,491.9721687463188],[405.09016898531934,527.8729858395174]]},{"from":"cpo0l3","id":"wivx13","kind":"fence","name":"Alambre nuevo 6 (2)","pts":[[403.3097483024849,530.1986969807723],[388.3266815823919,547.5258306713503],[352,524]]},{"from":null,"id":"bzaaw1","kind":"barb","name":"Cerca sin corriente 1","pts":[[352,524],[361.8026577400527,509.5887372700366],[341.41559290734546,493.8026408053888],[330.63013742021894,508.14365219062654],[352,524]]},{"from":"cfcu7t","id":"wjhn3t","kind":"fence","name":"Alambre nuevo 7","pts":[[484.00648875130366,433.6633151974412],[478.36460636454905,429.45650780330743],[487.1825099640031,421.1284922360123],[491.4281605620229,424.7209691731287],[499.1564187471097,415.77899208815234]]},{"from":"RNW","id":"c45184","kind":"cable","name":"Cable puente","pts":[[405.09016898531934,527.8729858395174],[408.8437403036006,530.9134619382827]]},{"from":"RNW","id":"w2brum","kind":"fence","name":"Alambre nuevo 8","pts":[[502.5612998725758,418.545584877583],[499.1564187471097,415.77899208815234]]},{"from":"wan5a7","id":"wrvvl4","kind":"fence","name":"Alambre nuevo 9","pts":[[358.95281365359693,491.9721687463188],[354.631404353999,496.5112263997844]]},{"from":"E1","id":"chj9vp","kind":"cable","name":"Cable puente","pts":[[336.14439824776815,493.5137706584667],[358.90283423332374,492.00765475323027]]},{"from":null,"id":"bpa0s1","kind":"barb","name":"Cerca sin corriente 2","pts":[[279.9976517787526,466.7773600460397],[288.9368154444692,466.3497702045303]]},{"from":"E2","id":"wpid2z","kind":"perimeter","name":"Alambre nuevo 10","pts":[[284.3571428571429,465.62857001168385],[283.2429680059813,462.70991554212685]]},{"egate":true,"from":"RNW","id":"cfcu7t","kind":"cable","name":"Puerta con corriente 1","open":false,"pts":[[487.2140965202294,435.75960342105384],[484.00648875130366,433.6633151974412]]},{"egate":true,"from":"RNW","id":"cpo0l3","kind":"cable","name":"Puerta con corriente 2","open":false,"pts":[[405.09016898531934,527.8729858395174],[403.3097483024849,530.1986969807723]]},{"from":"E6","id":"w523w9","kind":"fence","name":"Alambre nuevo 12","pts":[[505,579],[497.71852492936875,587.3205550525397],[419.5725691199184,545.4258720824679]]},{"from":"c9j0fg","id":"wgt4qm","kind":"fence","name":"Alambre nuevo 12 (2)","pts":[[410.6775264157253,534.8584481551975],[405.25901173821967,534.6092532402924],[403.2807117235575,536.691674726453],[419.5725691199184,545.4258720824679]]},{"from":"wgt4qm","id":"w6zpw8","kind":"fence","name":"Alambre nuevo 12 (2)","pts":[[410.6775264157253,534.8584481551975],[413.48457621136356,531.7979834395949]]},{"from":"w523w9","id":"ckd6h8","kind":"cable","name":"Cable puente","pts":[[497.71852492936875,587.3205550525397],[502.6122182021787,589.9496177394827]]},{"from":"wan5a7","id":"c9j0fg","kind":"cable","name":"Cable puente","pts":[[405.09016898531934,527.8729858395174],[410.6775264157253,534.8584481551975]]},{"from":"wgt4qm","id":"chd2c4","kind":"cable","name":"Cable puente","pts":[[418.5071756621069,544.8547059780793],[415.074917554691,551.4047762338222]]},{"from":"SE1","id":"w1mubo","kind":"fence","name":"Alambre nuevo 15","pts":[[505.56838344315446,599.5723570156506],[509.5037366256851,594.4774648568255]]},{"from":"PL","id":"cglpxw","kind":"cable","name":"Cable puente","pts":[[498.40038865508217,595.4964465054961],[505.56838344315446,599.5723570156506]]},{"from":"PL","id":"wjnz0f","kind":"fence","name":"Alambre nuevo 16","pts":[[415.074917554691,551.4047762338222],[397.16692942683517,570.6812152626052],[380.34761266350046,560.0670825383706]]},{"from":"wzuzjk","id":"wsmz5o","kind":"fence","name":"Alambre nuevo 17","pts":[[392.10556321630065,581.9117273141827],[373.2806551991748,570.5570217958071]]},{"from":"clv1rp","id":"w8uswg","kind":"fence","name":"Alambre nuevo 18","pts":[[367.3044932001746,579.2224612538073],[352.0652846621737,600.4378317908083],[427.18841724889427,654.0037782952816]]},{"from":"wjnz0f","id":"clv1rp","kind":"cable","name":"Cable puente","pts":[[380.34761266350046,560.0670825383706],[367.3044932001746,579.2224612538073]]},{"from":"w8uswg","id":"wzuzjk","kind":"fence","name":"Alambre nuevo 19","pts":[[414.6159298844903,645.0390671284196],[430.42245024513994,604.8850314096519],[392.10556321630065,581.9117273141827]]},{"from":"L2a","id":"wtgxyw","kind":"fence","name":"Alambre nuevo 20","pts":[[359.9269358908337,544.4875092579805],[371.7397089131002,552.2515380442886],[358.2121914116212,572.4475515218935]]},{"from":"TR1","id":"c0l726","kind":"cable","name":"Cable puente","pts":[[383,701],[392.0802814093435,706.2695089123639]]},{"from":"TR1","id":"c0rvo5","kind":"cable","name":"Cable puente","pts":[[383,701],[378.8904213618983,706.4315641483811]]},{"from":"c0rvo5","id":"wlm8u8","kind":"fence","name":"Alambre nuevo 21","pts":[[378.8904213618983,706.4315641483811],[343.6277273124557,684.2230212567471]]},{"from":"ccx304","id":"w2u93f","kind":"fence","name":"Alambre nuevo 22","pts":[[333.6235837257285,678.1129603323957],[297.5645376772786,653.2921212192412]]},{"from":"wlm8u8","id":"ccx304","kind":"cable","name":"Cable puente","pts":[[343.6277273124557,684.2230212567471],[333.6235837257285,678.1129603323957]]},{"from":"c55xc4","id":"wo8270","kind":"fence","name":"Alambre nuevo 24","pts":[[268.8904304856117,860.2802386724989],[277.7220775244374,865.2608761448396]]},{"from":"S2","id":"wbe2pb","kind":"fence","name":"Alambre nuevo 24","pts":[[253,848],[259.0318397274911,852.5782195395291]]},{"from":"wbe2pb","id":"c55xc4","kind":"cable","name":"Cable puente","pts":[[259.0318397274911,852.5782195395291],[268.8904304856117,860.2802386724989]]},{"from":"wbe2pb","id":"c1aebn","kind":"cable","name":"Cable puente","pts":[[253,848],[245.7464754084639,842.1421706921535]]},{"from":"c1aebn","id":"ct0u7r","kind":"cable","name":"Cable puente","pts":[[245.7464754084639,842.1421706921535],[234.40082391907725,845.9659481868418]]},{"from":"W1","id":"w5ccn0","kind":"fence","name":"Alambre nuevo 25","pts":[[234.40082391907725,845.9659481868418],[231.0390729666256,854.8202909519179]]},{"from":null,"id":"brjn8y","kind":"barb","name":"Cerca sin corriente 3","pts":[[231.36524325753655,861.6290685570175],[226.30962241195954,867.337026873826],[234.4638485788288,873.0449851906344],[237.23628983039092,869.1309603632457],[231.69141354844749,862.2814091388393]]},{"from":"wbe2pb","id":"ww9avs","kind":"fence","name":"Alambre nuevo 26","pts":[[253,848],[234.9300399781496,866.2820642479892]]},{"from":"M5","id":"wdg0by","kind":"fence","name":"Alambre nuevo 27","pts":[[256.96952088692296,879.5683661241297],[249.46762908069476,874.4719747698365]]},{"from":"cvw9gy","id":"ws7kap","kind":"fence","name":"Alambre nuevo 28","pts":[[261.86205658704455,874.4312073717107],[256.96952088692296,879.5683661241297]]},{"from":"wo8270","id":"wj9ywv","kind":"fence","name":"Alambre nuevo 29","pts":[[272.30271810503183,862.2046099148021],[268.059267229629,866.9293217866633]]},{"from":"wj9ywv","id":"cvw9gy","kind":"cable","name":"Cable puente","pts":[[268.059267229629,866.9293217866633],[261.86205658704455,874.4312073717107]]},{"from":"W1","id":"wbwl01","kind":"fence","name":"Alambre nuevo 30","pts":[[215.89805754489396,812.7365550368013],[226.2777363663823,810.2060000041052]]},{"from":"c92p1r","id":"w4sqk7","kind":"fence","name":"Alambre nuevo 31","pts":[[334.8920108676561,500.3046071590441],[329.0209705159826,507.0318437467112]]},{"from":"E1","id":"c92p1r","kind":"cable","name":"Cable puente","pts":[[336.14439824776815,493.5137706584667],[334.8920108676561,500.3046071590441]]},{"from":"cv7plr","id":"wk9829","kind":"fence","name":"Alambre nuevo 32","pts":[[323.46286092143123,514.7881916008233],[325.4319189467912,511.9241084418476]]},{"from":"w4sqk7","id":"czpbix","kind":"cable","name":"Cable puente","pts":[[329.0209705159826,507.0318437467112],[320,517]]},{"egate":true,"from":"SHA","id":"cv7plr","kind":"cable","name":"Puerta con corriente 3","open":false,"pts":[[321.3109137122528,517.9303258603085],[323.46286092143123,514.7881916008233]]},{"from":null,"id":"bkucab","kind":"barb","name":"Cerca sin corriente 4","pts":[[325.4319189467912,511.9241084418476],[328.56451288939536,513.7141621233357],[330.6230756473836,510.5815681807315],[323.46286092143123,504.495384639395],[331.2495934116275,496.2611370216985],[336.492290346295,500.34896962434954]]},{"from":null,"id":"bytycy","kind":"barb","name":"Cerca sin corriente 5","pts":[[302.34725796596416,475.72708063642705],[300.3365929266036,477.8677419483981],[329.1447251627024,498.4869751875913]]},{"from":"cvgic7","id":"wwaxf2","kind":"fence","name":"Alambre nuevo 33","pts":[[299.5497338433769,478.78756574451086],[300.15381377537454,492.71160771617997]]},{"from":"wrafpl","id":"cvgic7","kind":"cable","name":"Cable puente","pts":[[302.34725796596416,475.72708063642705],[299.5497338433769,478.78756574451086]]},{"from":"capd6e","id":"wtfpsi","kind":"fence","name":"Alambre nuevo 34","pts":[[297.3750470099382,498.75240703615634],[309.2150127553391,504.43075931868697],[293.2673016288486,526.0266168876025],[274.0575602522002,513.12951586997],[287.2265115264005,492.10752778418237],[291.8175088703015,495.2487415870644]]},{"from":"wwaxf2","id":"capd6e","kind":"cable","name":"Cable puente","pts":[[300.15381377537454,492.71160771617997],[297.3750470099382,498.75240703615634]]},{"from":"L2a","id":"wq5m10","kind":"fence","name":"Alambre nuevo 35","pts":[[347.87958397925786,562.9079546550852],[342.19776344655594,560.1269225965993]]},{"from":"cxvps6","id":"w6ot9t","kind":"fence","name":"Alambre nuevo 36","pts":[[332.5324845345937,564.3252543888477],[269.1040939792238,520.5596628547424]]},{"from":"SHA","id":"cxvps6","kind":"cable","name":"Cable puente","pts":[[336,557],[332.5324845345937,564.3252543888477]]},{"from":"w6ot9t","id":"cj7hwt","kind":"cable","name":"Cable puente","pts":[[332.5324845345937,564.3252543888477],[328.6663651349098,570.9701474671141]]},{"from":"w6ot9t","id":"c4yj6j","kind":"cable","name":"Cable puente","pts":[[269.1040939792238,520.5596628547424],[263.4257416966932,527.113929195164]]},{"from":"wq5zjj","id":"csyrip","kind":"cable","name":"Cable puente","pts":[[353.0141177269469,451.56647412218695],[359.19841180364233,456.7897109455162]]}]},"savedAt":1794964022462};
-/* ---------- red del editor -> red del mapa ----------
-   El editor guarda alambres que reciben corriente de otro alambre o de un energizador ("from"),
-   y switches, puertas, fines de línea y notas como "parts". El mapa trabaja con tramos completos:
-   cada tramo tiene un padre y, si un switch lo corta, el id de ese switch.
-   Aquí se parte cada alambre en los puntos donde tiene switches o fin de línea, para que el mapa
-   corte exactamente lo mismo que el editor. */
-const RED_MAPA = (() => {
-  const TOUCH_E = 2, TOUCH_W = 1.5;   // mismas tolerancias que el editor
-  const dist = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
-  const plen = p => { let s = 0; for (let i = 1; i < p.length; i++) s += dist(p[i - 1], p[i]); return s; };
-  function project(q, p) {
-    let best = {d: 1e9, s: 0, x: p[0][0], y: p[0][1]}, acc = 0;
-    for (let i = 1; i < p.length; i++) {
-      const a = p[i - 1], b = p[i], dx = b[0] - a[0], dy = b[1] - a[1], l = Math.hypot(dx, dy) || 1e-9;
-      let t = ((q[0] - a[0]) * dx + (q[1] - a[1]) * dy) / (l * l); t = Math.max(0, Math.min(1, t));
-      const x = a[0] + t * dx, y = a[1] + t * dy, d = Math.hypot(q[0] - x, q[1] - y);
-      if (d < best.d) best = {d, s: acc + t * l, x, y};
-      acc += l;
-    }
-    return best;
-  }
-  function pointAt(p, s) {
-    let acc = 0;
-    for (let i = 1; i < p.length; i++) {
-      const l = dist(p[i - 1], p[i]);
-      if (acc + l >= s && l > 0) { const t = (s - acc) / l; return [p[i - 1][0] + t * (p[i][0] - p[i - 1][0]), p[i - 1][1] + t * (p[i][1] - p[i - 1][1])]; }
-      acc += l;
-    }
-    return p[p.length - 1].slice(0, 2);
-  }
-  function slice(p, s0, s1) {   // tramo del alambre entre las distancias s0 y s1
-    const out = [pointAt(p, s0)]; let acc = 0;
-    for (let i = 1; i < p.length; i++) { acc += dist(p[i - 1], p[i]); if (acc > s0 + 1e-6 && acc < s1 - 1e-6) out.push(p[i].slice(0, 2)); }
-    out.push(pointAt(p, s1));
-    return out;
-  }
-  const r1 = v => Math.round(v * 10) / 10;
-  const rp = p => p.map(q => [r1(q[0]), r1(q[1])]);
-
-  function convertir(net) {
-    const W = {}, EN = {};
-    net.wires.forEach(w => { W[w.id] = w; });
-    net.energizers.forEach(e => { EN[e.id] = e; });
-    const mpp = net.mpp;
-    const rootOf = (id, d = 0) => d > 400 ? null : EN[id] ? id : (W[id] && W[id].from ? rootOf(W[id].from, d + 1) : null);
-    const posOn = (wid, s) => { const w = W[wid]; return w ? pointAt(w.pts, Math.min(s, plen(w.pts))) : null; };
-    const partPos = p => {
-      if (p.a && p.b) { const A = posOn(p.a.on, p.a.s), B = posOn(p.b.on, p.b.s); if (A && B) return [(A[0] + B[0]) / 2, (A[1] + B[1]) / 2]; }
-      if (p.on && W[p.on]) return posOn(p.on, p.s);
-      return p.x != null ? [p.x, p.y] : null;
-    };
-
-    /* switches: los agrupados (grp) son uno solo; los demás llevan número propio */
-    const swParts = net.parts.filter(p => p.type === 'switch' && W[p.on]);
-    const usados = new Set(), swId = {}, switches = [];
-    const numDe = p => { const m = (p.grp || p.id).match(/^[sS](\d+)(_|$)/); return m ? +m[1] : null; };
-    swParts.forEach(p => { if (p.grp) { swId[p.id] = p.grp; } else { const n = numDe(p); if (n && !usados.has('S' + n)) swId[p.id] = 'S' + n; } if (swId[p.id]) usados.add(swId[p.id]); });
-    let sig = 1; const libre = () => { while (usados.has('S' + sig)) sig++; usados.add('S' + sig); return 'S' + sig; };
-    swParts.forEach(p => { if (!swId[p.id]) swId[p.id] = libre(); });
-    const nombres = {}; swParts.forEach(p => { nombres[p.name] = (nombres[p.name] || 0) + 1; });
-    const visto = new Set();
-    swParts.forEach(p => {
-      const id = swId[p.id]; if (visto.has(id)) return; visto.add(id);
-      const generico = /^Switch \d+$/.test(p.name || '') && nombres[p.name] > 1;
-      switches.push({id, name: generico || !p.name ? 'Switch en «' + W[p.on].name + '»' : p.name, pos: rp([partPos(p)])[0]});
-    });
-    const abiertos = [...new Set(swParts.filter(p => p.open).map(p => swId[p.id]))];
-
-    /* cortes por alambre: switches y fines de línea */
-    const cortes = {};
-    net.parts.forEach(p => {
-      if (!(p.type === 'switch' || p.type === 'end') || !W[p.on]) return;
-      const w = W[p.on]; if (w.kind === 'cable' || w.kind === 'barb') return;
-      const L = plen(w.pts); (cortes[w.id] = cortes[w.id] || []).push({s: Math.max(0, Math.min(p.s, L)), sw: p.type === 'switch' ? swId[p.id] : null, fin: p.type === 'end'});
-    });
-
-    const lines = {}, tramos = {};   // tramos[wid] = [{id, s0, s1}]
-    const MUERTO = '__sin_corriente';
-    net.wires.forEach(w => {
-      if (w.kind === 'barb' || w.kind === 'cable') return;
-      const L = plen(w.pts), cs = (cortes[w.id] || []).sort((a, b) => a.s - b.s), lista = [];
-      let s0 = 0;
-      cs.forEach((c, i) => { lista.push({id: i ? w.id + '~' + i : w.id, s0, s1: c.s, corte: i ? cs[i - 1] : null}); s0 = c.s; });
-      lista.push({id: cs.length ? w.id + '~' + cs.length : w.id, s0, s1: L, corte: cs.length ? cs[cs.length - 1] : null});
-      tramos[w.id] = lista;
-    });
-
-    /* de dónde recibe corriente un alambre: el tramo del padre donde se apoya su inicio */
-    function padreDe(w) {
-      if (!w.from) return {parent: MUERTO};
-      const e = EN[w.from];
-      if (e) return dist(w.pts[0], [e.x, e.y]) <= TOUCH_E ? {parent: e.id} : {parent: MUERTO};
-      const pw = W[w.from]; if (!pw || pw.kind === 'barb') return {parent: MUERTO};
-      const pr = project(w.pts[0], pw.pts); if (pr.d > TOUCH_W) return {parent: MUERTO};
-      if (pw.kind === 'cable') return {parent: pw.id};
-      const t = tramos[pw.id].find((x, i, a) => pr.s < x.s1 - 1e-6 || i === a.length - 1);
-      return {parent: t.id};
-    }
-
-    const gates = [], ends = [];
-    net.wires.forEach(w => {
-      if (w.kind === 'barb') return;
-      const circuit = rootOf(w.id) || '';
-      const {parent} = padreDe(w);
-      if (w.kind === 'cable') {
-        const A = w.pts[0], B = w.pts[w.pts.length - 1], m = Math.round(plen(w.pts) * mpp);
-        const sw = net.parts.find(p => p.type === 'switch' && p.on === w.id);
-        const ln = {name: w.name, m, kind: 'fence', circuit, parent: w.egate && w.open ? MUERTO : parent};
-        if (sw) ln.sw = swId[sw.id];
-        if (w.egate) { Object.assign(ln, {pts: rp([A, B]), via: 'j', pa: rp([A])[0]}); gates.push(rp([[(A[0] + B[0]) / 2, (A[1] + B[1]) / 2]])[0]); }
-        else Object.assign(ln, {pts: rp([B]), via: 'br', pa: rp([A])[0]});
-        if (w.gate) gates.push(rp([w.gate])[0]);
-        lines[w.id] = ln;
-        return;
-      }
-      tramos[w.id].forEach((t, i) => {
-        const pts = rp(slice(w.pts, t.s0, t.s1));
-        const ln = {name: w.name, pts, m: Math.round((t.s1 - t.s0) * mpp), kind: w.kind === 'perimeter' ? 'perimeter' : 'fence', circuit, via: 'j', pa: pts[0]};
-        if (i === 0) ln.parent = parent;
-        else if (t.corte.fin) ln.parent = MUERTO;
-        else { ln.parent = tramos[w.id][i - 1].id; ln.sw = t.corte.sw; }
-        lines[t.id] = ln;
-      });
-    });
-
-    /* fines de línea: donde un alambre termina sin que otro siga, y los puestos a mano */
-    net.wires.forEach(w => {
-      if (w.kind === 'barb') return;
-      const e = w.pts[w.pts.length - 1];
-      if (net.wires.some(o => o !== w && o.from === w.id && dist(o.pts[0], e) < 2.5)) return;
-      if (net.parts.some(q => q.type === 'end' && q.on === w.id && dist(partPos(q), e) < 2)) return;
-      ends.push(rp([e])[0]);
-    });
-    net.parts.filter(p => p.type === 'end').forEach(p => { const q = partPos(p); if (q) ends.push(rp([q])[0]); });
-    net.parts.filter(p => p.type === 'gate').forEach(p => { const q = partPos(p); if (q) gates.push(rp([q])[0]); });
-
-    /* notas del editor: las de Claude sin contestar son dudas; las contestadas, ya confirmadas */
-    const doubts = [], resolved = [];
-    net.parts.filter(p => p.type === 'note' && (p.text || '').trim()).forEach((p, i) => {
-      const m = p.text.match(/^\?(\d+)\s*/), n = m ? +m[1] : 100 + i, text = p.text.replace(/^\?\d+\s*/, '');
-      if ((p.answer || '').trim()) resolved.push({n, text: text.split(/[.:?]/)[0] + ' — ' + p.answer.trim()});
-      else doubts.push({n, pos: [r1(p.x), r1(p.y)], text: (p.by === 'claude' ? '' : 'Nota: ') + text});
-    });
-
-    const unicas = (lista, r) => lista.filter((q, i) => !lista.slice(0, i).some(o => dist(o, q) < r));
-    return {
-      mpp, size: net.size, gates: unicas(gates, 3), ends: unicas(ends, 2),
-      energizers: net.energizers.map(e => ({id: e.id, name: e.name, pos: [r1(e.x), r1(e.y)], off: e.on === false})),
-      lines, switches, abiertos, doubts, resolved,
-      barb: net.wires.filter(w => w.kind === 'barb').map(w => ({name: w.name, pts: rp(w.pts), m: Math.round(plen(w.pts) * mpp)})),
-    };
-  }
-
-  /* qué red usar: la incluida al publicar, la del editor en este dispositivo, o la última bajada de la nube */
-  const leer = k => { try { const j = JSON.parse(localStorage.getItem(k) || 'null'); return j && j.net && j.net.wires ? j : null; } catch (e) { return null; } };
-  const CLAVE_NUBE = 'cerco-mapa-red';
-  function elegir(incluida) {
-    // La nube manda: la incluida al publicar y la última bajada de la nube son versiones de la nube.
-    // La copia del editor en este dispositivo solo cuenta si salió de la versión más nueva de la nube
-    // (cambios hechos aquí que tal vez no se han subido). Una copia vieja con fecha nueva no la tapa.
-    const nube = [incluida, leer(CLAVE_NUBE)].filter(Boolean).reduce((a, b) => (b.savedAt || 0) > (a.savedAt || 0) ? b : a);
-    const local = leer('cerco-editor-v3');
-    return local && local.base && local.base >= (nube.savedAt || 0) && (local.savedAt || 0) > (nube.savedAt || 0) ? local : nube;
-  }
-  /* después de dibujar: si la nube tiene una versión más nueva, se guarda y se ofrece recargar */
-  async function revisarNube(usada, avisar) {
-    try {
-      const use = window.claude && window.claude.use ? window.claude.use('db') : null;
-      const db = use ? await Promise.race([use, new Promise(r => setTimeout(() => r(null), 6000))]) : null;
-      if (!db) return;
-      const snap = await db.doc('cerco/red').get();
-      const r = snap.exists ? snap.data() : null;
-      if (!r || !r.net || !r.net.wires) return;
-      try { localStorage.setItem(CLAVE_NUBE, JSON.stringify(r)); } catch (e) {}
-      if ((r.savedAt || 0) > (usada.savedAt || 0) + 1000) avisar();
-    } catch (e) { console.warn('Mapa: no se pudo revisar la nube', e); }
-  }
-  return {convertir, elegir, revisarNube};
-})();
-
-const RED_USADA = RED_MAPA.elegir(RED_INCLUIDA);
+(async () => {
+// El cerco sale de la fuente única (cerco.js), la misma que usa el editor; red-mapa.js lo pasa al formato del mapa.
+const RED_USADA = await Cerco.inicial();
+if (!RED_USADA) { document.getElementById('pw-msg').textContent = 'No se pudo cargar el cerco. Conéctate a internet y vuelve a abrir.'; return; }
 const NET = RED_MAPA.convertir(RED_USADA.net);
 const ROAD = [[733,160],[407,529],[389,550],[352,524],[336,508]];
 const PLACES = [{t:'Casa',x:322,y:448},{t:'Entrada',x:736,y:140}];
@@ -668,29 +482,12 @@ new ResizeObserver(applyView).observe(svg);
 let hinted=false,markMode=false;
 svg.addEventListener('pointerdown',()=>{if(!hinted){hinted=true;setTimeout(()=>{if(!markMode)$('hint').hidden=true;},2500);}});
 
-/* ---------- dudas de Claude ---------- */
-const dList=$('doubt-list');
-NET.doubts.forEach(d=>{const g=sym(d.pos[0],d.pos[1],'doubt',gDoubt);titled(g,'Duda '+d.n+': '+d.text);
-  el('path',{d:'M0 0 9-9',stroke:'#fff','stroke-width':1.6},g);
-  el('circle',{cx:14,cy:-14,r:9,fill:'#7C4DFF',stroke:'#fff','stroke-width':1.5},g);
-  el('text',{x:14,y:-10.5,'text-anchor':'middle',class:'doubt-n'},g).textContent='?'+d.n;
-  g.addEventListener('click',e=>{e.stopPropagation();if(drag.moved)return;showDoubt(d.n,false);});
-  const li=document.createElement('li');li.className='dz-row';li.dataset.n=d.n;
-  const b=document.createElement('button');b.type='button';b.className='dz-tag';b.textContent='?'+d.n;b.setAttribute('aria-label','Ver duda '+d.n+' en el mapa');
-  b.addEventListener('click',()=>showDoubt(d.n,true));
-  const p=document.createElement('p');p.textContent=d.text;li.append(b,p);dList.appendChild(li);});
-function showDoubt(n,zoom){const d=NET.doubts.find(x=>x.n===n);if(!d)return;if(zoom)focusAt(d.pos[0],d.pos[1],3.2);
-  document.querySelectorAll('.dz-row').forEach(r=>r.classList.toggle('hl',+r.dataset.n===n));
-  const r=document.querySelector(`.dz-row[data-n="${n}"]`);if(r&&!zoom)r.scrollIntoView({block:'nearest',behavior:'smooth'});}
-$('doubt-toggle').addEventListener('change',e=>{gDoubt.style.display=e.target.checked?'':'none';});
-if((NET.resolved||[]).length){const p=$('doubt-done');p.hidden=false;
-  p.textContent='Ya confirmado ('+NET.resolved.length+' de '+(NET.resolved.length+NET.doubts.length)+'): '+NET.resolved.map(r=>'?'+r.n+' '+r.text).join('; ')+'.';}
 
 /* ---------- correcciones (base de datos del mapa; si no hay, se guardan en este dispositivo) ---------- */
 const TIPOS=['Línea que sobra','Falta una línea','Línea en otro lugar','Conexión incorrecta','Switch','Cable sobre puerta','Puerta','Sentido del flujo','Energizador','Otro'];
 const gPins=$('g-pins'),PINS=[];
 const markBtn=$('mark'),markBtn2=$('mark2'),form=$('fix-form'),fTipo=$('fix-tipo'),fNota=$('fix-nota'),fNear=$('fix-near'),fMsg=$('fix-msg'),
-  fSave=$('fix-save'),fTitle=$('fix-title'),fixList=$('fix-list'),fixStatus=$('fix-status'),copyBtn=$('fix-copy'),copyOut=$('fix-copy-out');
+  fSave=$('fix-save'),fTitle=$('fix-title'),fixList=$('fix-list'),fixStatus=$('fix-status');
 fTipo.innerHTML=TIPOS.map(t=>`<option>${t}</option>`).join('');
 let DB=null,LOCAL=false,notes=[],draft=null,editing=null,readOnly=false,confirmDel=null,statusHold=0;
 function segDist(x,y,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],q=dx*dx+dy*dy||1;let t=((x-a[0])*dx+(y-a[1])*dy)/q;t=Math.max(0,Math.min(1,t));return Math.hypot(a[0]+t*dx-x,a[1]+t*dy-y);}
@@ -730,7 +527,7 @@ form.addEventListener('submit',async e=>{e.preventDefault();if(!DB||!draft)retur
     cerca:draft.near?draft.near.label:'',ref:draft.near?draft.near.ref:'',estado:editing?(editing.estado||'pendiente'):'pendiente',
     creado:editing?(editing.creado||new Date().toISOString()):new Date().toISOString()};
   fSave.disabled=true;fMsg.textContent='Guardando…';
-  const slow=setTimeout(()=>{fMsg.textContent='Está tardando. Si no termina, copia tu nota y mándamela por el chat.';fSave.disabled=false;},8000);
+  const slow=setTimeout(()=>{fMsg.textContent='Está tardando. Revisa tu conexión e inténtalo otra vez.';fSave.disabled=false;},8000);
   try{if(editing)await DB.doc('correcciones/'+editing.id).set(body);else await DB.collection('correcciones').add(body);
     clearTimeout(slow);closeForm();flashStatus(`Corrección ${body.n} guardada.`);}
   catch(err){clearTimeout(slow);fSave.disabled=false;const c=err&&err.code;
@@ -743,7 +540,7 @@ svg.addEventListener('click',e=>{if(!markMode)return;if(e.target.closest&&e.targ
 function focusNote(id,zoom=true){const nd=notes.find(n=>n.id===id);if(!nd)return;if(zoom)focusAt(nd.x,nd.y,3);
   document.querySelectorAll('.fix-row').forEach(r=>r.classList.toggle('hl',r.dataset.id===id));
   const r=document.querySelector(`.fix-row[data-id="${id}"]`);if(r&&!zoom)r.scrollIntoView({block:'nearest',behavior:'smooth'});}
-function renderNotes(){fixList.replaceChildren();copyBtn.hidden=!notes.length;if(!notes.length)copyOut.hidden=true;
+function renderNotes(){fixList.replaceChildren();
   notes.forEach(nd=>{const li=document.createElement('li');li.className='fix-row'+(nd.estado==='resuelto'?' done':'');li.dataset.id=nd.id;
     const tag=document.createElement('button');tag.type='button';tag.className='pin-tag';tag.textContent=nd.n;tag.setAttribute('aria-label','Ver corrección '+nd.n+' en el mapa');
     tag.addEventListener('click',()=>focusNote(nd.id));
@@ -764,12 +561,8 @@ function renderNotes(){fixList.replaceChildren();copyBtn.hidden=!notes.length;if
     li.append(tag,tx,acts);fixList.appendChild(li);});
   drawPins();}
 function statusIdle(){if(Date.now()<statusHold)return;const pend=notes.filter(n=>n.estado!=='resuelto').length;
-  const where=LOCAL?' Guardadas solo en este dispositivo: usa «Copiar para Claude» y pégalas en el chat.':'';
+  const where=LOCAL?' Guardadas solo en este dispositivo: inicia sesión para guardarlas en la nube.':'';
   fixStatus.textContent=notes.length?`${notes.length} ${notes.length===1?'corrección':'correcciones'}${pend!==notes.length?` · ${pend} pendientes`:''}.${where}`:'Aún no hay correcciones. Toca «Marcar corrección» y luego el lugar del mapa.';}
-copyBtn.addEventListener('click',async()=>{
-  const txt='Correcciones del mapa del cerco:\n'+notes.map(n=>`${n.n}. [${n.tipo}] ${n.nota}${n.cerca?' (cerca de: '+n.cerca+')':''} — punto x=${n.x}, y=${n.y}${n.estado==='resuelto'?' (resuelta)':''}`).join('\n');
-  try{await navigator.clipboard.writeText(txt);flashStatus('Copiado. Pégalo en el chat.');}
-  catch(e){copyOut.value=txt;copyOut.hidden=false;copyOut.focus();copyOut.select();flashStatus('Selecciona el texto, cópialo y pégalo en el chat.');}});
 /* respaldo local con la misma forma que la base de datos */
 function localStore(){const KEY='cerco-correcciones-v1';let docs={},subs=[],seq=0;
   try{docs=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){docs={};}
@@ -793,8 +586,12 @@ function startNotes(db){if(!db){db=localStore();LOCAL=true;}DB=db;
   startNotes(db);})();
 
 applyView();render();
-RED_MAPA.revisarNube(RED_USADA,()=>{if(document.querySelector('.nueva'))return;const d=document.createElement('div');d.className='nueva';d.setAttribute('role','status');
-  d.innerHTML='<span>El cerco cambió en el editor.</span><button type="button">Actualizar mapa</button>';d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d);});
+/* si en la nube hay una versión más nueva que la que se dibujó, se guarda en el dispositivo y se ofrece actualizar */
+const n=await Cerco.nube();
+if(n&&n.remota&&(n.remota.savedAt||0)>(RED_USADA.base||0)&&!Cerco.igual(n.remota.net,RED_USADA.net)){Cerco.tomarDeNube(n.remota);
+  const d=document.createElement('div');d.className='nueva';d.setAttribute('role','status');
+  d.innerHTML='<span>El cerco cambió en el editor.</span><button type="button">Actualizar mapa</button>';d.querySelector('button').onclick=()=>location.reload();document.body.appendChild(d);}
+})();
 </script>
 
 <script>

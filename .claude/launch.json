@@ -2,34 +2,6 @@
   "version": "0.0.1",
   "configurations": [
     {
-      "name": "mapa-cerco",
-      "runtimeExecutable": "python",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "8765",
-        "--bind",
-        "127.0.0.1",
-        "--directory",
-        "C:/Users/diego/Documents/Dev/ProyectoCercas-App/mapa"
-      ],
-      "port": 8765
-    },
-    {
-      "name": "editor-cerco",
-      "runtimeExecutable": "python",
-      "runtimeArgs": [
-        "-m",
-        "http.server",
-        "8766",
-        "--bind",
-        "127.0.0.1",
-        "--directory",
-        "C:/Users/diego/Documents/Dev/ProyectoCercas-App/editor"
-      ],
-      "port": 8766
-    },
-    {
       "name": "publicar",
       "runtimeExecutable": "python",
       "runtimeArgs": [
