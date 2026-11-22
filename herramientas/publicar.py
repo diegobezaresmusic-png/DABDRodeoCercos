@@ -228,9 +228,9 @@ def iconos(dest):
     from PIL import Image, ImageDraw
     dest.mkdir(parents=True, exist_ok=True)
 
-    def dibujar(tam, margen):
+    def dibujar(tam, margen, fondo=COLOR):
         # Fondo oscuro, rayo ámbar y dos postes con alambre: "cerco eléctrico".
-        im = Image.new('RGBA', (tam, tam), COLOR)
+        im = Image.new('RGBA', (tam, tam), fondo)
         d = ImageDraw.Draw(im)
         s = lambda v: margen + v * (tam - 2 * margen)
         ancho = max(2, round(tam * 0.035))
@@ -246,6 +246,91 @@ def iconos(dest):
         dibujar(tam, round(tam * 0.06)).save(dest / f'icono-{tam}.png')
         dibujar(tam, round(tam * 0.18)).save(dest / f'icono-maskable-{tam}.png')
     dibujar(180, 14).convert('RGB').save(dest / 'apple-touch-icon.png')
+    dibujar(512, 0, (0, 0, 0, 0)).save(dest / 'logo.png')   # el logo solo, para la pantalla de inicio
+    splash_ios(dest / 'arranque', lambda t: dibujar(t, 0, (0, 0, 0, 0)))
+
+
+# Pantallas de arranque de iPhone/iPad (iOS no las arma solo): (ancho, alto CSS, densidad)
+IOS = [(320, 568, 2), (375, 667, 2), (414, 736, 3), (375, 812, 3), (414, 896, 2), (414, 896, 3), (390, 844, 3), (428, 926, 3),
+       (393, 852, 3), (430, 932, 3), (402, 874, 3), (440, 956, 3), (744, 1133, 2), (768, 1024, 2), (810, 1080, 2), (820, 1180, 2),
+       (834, 1112, 2), (834, 1194, 2), (1024, 1366, 2)]
+
+
+def pantallas_ios():
+    for w, h, k in IOS:
+        for orient in ('portrait', 'landscape'):
+            if orient == 'landscape' and w < 700:
+                continue   # los iPhone se usan de pie; las tabletas en las dos posiciones
+            yield w, h, k, orient
+
+
+def splash_ios(dest, logo):
+    from PIL import Image, ImageDraw, ImageFilter, ImageFont
+    dest.mkdir(parents=True, exist_ok=True)
+    try:
+        ImageFont.truetype('C:/Windows/Fonts/segoeuib.ttf', 10)
+        letra = lambda t: ImageFont.truetype('C:/Windows/Fonts/segoeuib.ttf', t)
+    except OSError:
+        letra = None
+    for w, h, k, orient in pantallas_ios():
+        W, H = (w * k, h * k) if orient == 'portrait' else (h * k, w * k)
+        im = Image.new('RGB', (W, H), COLOR)
+        L = round(148 * k)   # mismo tamaño que la pantalla de inicio dentro de la app
+        cx, cy = W // 2, H // 2 - round(24 * k)
+        brillo = Image.new('L', (W, H), 0)
+        ImageDraw.Draw(brillo).ellipse([cx - L * .62, cy - L * .62, cx + L * .62, cy + L * .62], fill=90)
+        im.paste(Image.new('RGB', (W, H), '#F2B705'), (0, 0), brillo.filter(ImageFilter.GaussianBlur(L * .22)))
+        lg = logo(L)
+        im.paste(lg, (cx - L // 2, cy - L // 2), lg)
+        if letra:
+            d = ImageDraw.Draw(im)
+            f = letra(round(24 * k))
+            d.text((cx - d.textlength(NOMBRE, font=f) / 2, cy + L / 2 + round(14 * k)), NOMBRE, font=f, fill='#EEF2EC')
+        im.save(dest / f'{w}x{h}@{k}-{orient[0]}.png', optimize=True)
+
+
+def enlaces_ios():
+    return '\n'.join(f'<link rel="apple-touch-startup-image" media="screen and (device-width: {w}px) and (device-height: {h}px) and '
+                     f'(-webkit-device-pixel-ratio: {k}) and (orientation: {o})" href="/iconos/arranque/{w}x{h}@{k}-{o[0]}.png">'
+                     for w, h, k, o in pantallas_ios())
+
+
+# Pantalla de inicio (splash) dentro de la app: el logo con brillo y el nombre. Solo al abrir la app (una vez por sesión),
+# no al moverse entre secciones. Se quita sola en ~1 s.
+SPLASH_CSS = '''
+#cz-splash{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:__COLOR__;transition:opacity .35s ease}
+html.cz-sin-splash #cz-splash{display:none}
+#cz-splash.fuera{opacity:0;pointer-events:none}
+#cz-splash .cz-s{display:grid;justify-items:center;gap:18px;animation:cz-s-in .55s cubic-bezier(.2,.8,.2,1) both}
+#cz-splash .cz-l{position:relative;width:148px;height:148px}
+#cz-splash .cz-l::before{content:"";position:absolute;inset:-22%;border-radius:50%;background:radial-gradient(circle,rgba(242,183,5,.38),rgba(242,183,5,0) 62%);animation:cz-s-brillo 1.1s ease-in-out infinite alternate}
+#cz-splash .cz-l img{position:relative;width:100%;height:100%}
+#cz-splash p{margin:0;color:#EEF2EC;font:700 24px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:.01em}
+@keyframes cz-s-in{from{opacity:0;transform:scale(.94)}}
+@keyframes cz-s-brillo{from{opacity:.4;transform:scale(.9)}to{opacity:1;transform:scale(1.05)}}
+@media (prefers-reduced-motion:reduce){#cz-splash .cz-s,#cz-splash .cz-l::before{animation:none}}
+'''.replace('__COLOR__', COLOR)
+SPLASH_JS = '''
+(function () {
+  var h = document.documentElement, ver = true;
+  try { if (sessionStorage.getItem('cerco-splash')) ver = false; else sessionStorage.setItem('cerco-splash', '1'); } catch (e) {}
+  if (!ver) { h.classList.add('cz-sin-splash'); return; }
+  var t0 = Date.now();
+  function quitar() {
+    var s = document.getElementById('cz-splash'); if (!s) return;
+    setTimeout(function () { s.classList.add('fuera'); setTimeout(function () { s.remove(); }, 400); }, Math.max(0, 1000 - (Date.now() - t0)));
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', quitar); else quitar();
+})();
+'''
+
+
+def con_splash(html):
+    assert html.count('</head>') == 1 and html.count('<body>') == 1
+    cabeza_extra = '<style>' + SPLASH_CSS + '</style>\n<script>' + SPLASH_JS + '</script>\n' + enlaces_ios() + '\n'
+    cuerpo = ('<div id="cz-splash" aria-hidden="true"><div class="cz-s"><div class="cz-l"><img src="/iconos/logo.png" alt=""></div>'
+              '<p>' + NOMBRE + '</p></div></div>\n')
+    return html.replace('</head>', cabeza_extra + '</head>').replace('<body>', '<body>\n' + cuerpo)
 
 
 def main():
@@ -271,11 +356,11 @@ def main():
     for app, html in paginas().items():
         cfg = APPS[app]
         (SALIDA / app).mkdir()
-        (SALIDA / app / 'index.html').write_text(cabeza(cfg['titulo'], cfg['scripts']) + html + PIE, encoding='utf-8')
+        (SALIDA / app / 'index.html').write_text(con_splash(cabeza(cfg['titulo'], cfg['scripts']) + html + PIE), encoding='utf-8')
         archivos.append(f'/{app}/')
     print(f"cerco publicado: {len(cerco['net']['wires'])} alambres")
 
-    (SALIDA / 'index.html').write_text(INICIO, encoding='utf-8')
+    (SALIDA / 'index.html').write_text(con_splash(INICIO), encoding='utf-8')
     cfg_ruta = RAIZ / 'config.nube.json'
     cfg = json.loads(cfg_ruta.read_text(encoding='utf-8')) if cfg_ruta.exists() else {}
     if 'service_role' in json.dumps(cfg) or str(cfg.get('clave', '')).startswith('sb_secret_'):
@@ -284,7 +369,7 @@ def main():
     (SALIDA / 'config.js').write_text('window.CERCO_NUBE = ' + json.dumps(cfg) + ';\n', encoding='utf-8')
     archivos += ['/config.js', '/nube.js']
     iconos(SALIDA / 'iconos')
-    archivos += [f'/iconos/{p.name}' for p in sorted((SALIDA / 'iconos').iterdir())]
+    archivos += [f'/iconos/{p.name}' for p in sorted((SALIDA / 'iconos').iterdir()) if p.is_file()]   # las de arranque de iOS no se precargan
 
     manifest = {
         'name': NOMBRE, 'short_name': 'Cerco', 'lang': 'es',
