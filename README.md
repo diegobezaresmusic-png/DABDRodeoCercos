@@ -20,6 +20,8 @@ La foto también es una sola: `publicar/datos/rancho.jpg`.
 | `fuente/template2.html` | Página del mapa (sin datos adentro). |
 | `fuente/editor/editor3.tpl.html` | Página del editor (sin datos adentro). |
 | `fuente/red-mapa.js` | Pasa la red del editor al formato del mapa (tramos, switches, puertas). |
+| `fuente/fallas-mapa.js` | Sección **Fallas** (`/fallas/`, la misma página del mapa en otro modo): reportar, ver qué se queda sin corriente, marcar reparada. En `/mapa/` solo pone los pines. |
+| `herramientas/web/fallas.js` | Datos de las fallas: colección `fallas` y fotos aparte en `fotos`. Guarda primero en el teléfono y sube solo cuando hay señal. |
 | `fuente/rancho.jpg` | La foto del rancho, única para todas las secciones. |
 | `herramientas/web/cerco.js` | Cómo se carga y guarda el cerco: la fuente única. |
 | `herramientas/web/nube.js` | Conexión con Supabase (sesión y base de datos). |

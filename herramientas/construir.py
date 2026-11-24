@@ -16,6 +16,7 @@ F = RAIZ / 'fuente'
 def paginas():
     return {
         'mapa': (F / 'template2.html').read_text(encoding='utf-8'),
+        'fallas': (F / 'template2.html').read_text(encoding='utf-8'),   # el mismo mapa, en modo Fallas (lo decide la ruta)
         'editor': (F / 'editor' / 'editor3.tpl.html').read_text(encoding='utf-8'),
     }
 

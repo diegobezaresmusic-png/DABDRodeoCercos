@@ -40,6 +40,10 @@
       "url": "/mapa/"
     },
     {
+      "name": "Fallas",
+      "url": "/fallas/"
+    },
+    {
       "name": "Editar el cerco",
       "url": "/editor/"
     }

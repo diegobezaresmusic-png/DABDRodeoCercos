@@ -317,10 +317,30 @@ const NSS={'vector-effect':'non-scaling-stroke'};
 /* ---------- red: cada línea recibe corriente de su "padre" ---------- */
 const L=NET.lines, MPP=NET.mpp, EN=NET.energizers, ALL=Object.keys(L);
 const KIDS={};ALL.forEach(k=>{(KIDS[L[k].parent]=KIDS[L[k].parent]||[]).push(k);});
-function solve(open){const live=new Set(),st=EN.filter(e=>!e.off).map(e=>e.id);
-  while(st.length){const u=st.pop();for(const c of KIDS[u]||[]){if(L[c].sw&&open.has(L[c].sw))continue;live.add(c);st.push(c);}}
+/* fallas (sección Fallas): cortes a media línea, energizadores apagados y circuitos con corriente baja */
+const MODO=location.pathname.startsWith('/fallas')?'fallas':'mapa';
+const SIN_EFECTOS={cortes:new Map(),enOff:new Set(),baja:new Set()};
+let EFECTOS=SIN_EFECTOS;
+function along(pts,x,y){let best={dist:Infinity,d:0,pt:pts[0]},acc=0;
+  if(pts.length<2)return {dist:Math.hypot(pts[0][0]-x,pts[0][1]-y),d:0,pt:pts[0]};
+  for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1],dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy),q=len*len||1;
+    let t=((x-a[0])*dx+(y-a[1])*dy)/q;t=Math.max(0,Math.min(1,t));const px=a[0]+t*dx,py=a[1]+t*dy,dd=Math.hypot(px-x,py-y);
+    if(dd<best.dist)best={dist:dd,d:acc+t*len,pt:[px,py]};acc+=len;}
+  return best;}
+function splitAt(pts,d){const a=[pts[0]];let acc=0;
+  for(let i=0;i<pts.length-1;i++){const p=pts[i],q=pts[i+1],len=Math.hypot(q[0]-p[0],q[1]-p[1]);
+    if(acc+len>=d){const t=len?(d-acc)/len:0,m=[p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t];a.push(m);return [a,[m].concat(pts.slice(i+1))];}
+    a.push(q);acc+=len;}
+  return [a,[pts[pts.length-1]]];}
+function solve(open,ef){ef=ef||EFECTOS;const live=new Set(),st=EN.filter(e=>!e.off&&!ef.enOff.has(e.id)).map(e=>e.id);
+  while(st.length){const u=st.pop(),cu=ef.cortes.get(u);
+    for(const c of KIDS[u]||[]){if(L[c].sw&&open.has(L[c].sw))continue;if(cu!=null&&(ATT[c]||0)>=cu-0.5)continue;live.add(c);st.push(c);}}
   return live;}
 const meters=keys=>{let m=0;keys.forEach(k=>m+=L[k].m);return m;};
+const largo=p=>{let s=0;for(let i=0;i<p.length-1;i++)s+=Math.hypot(p[i+1][0]-p[i][0],p[i+1][1]-p[i][1]);return s;};
+// metros con corriente: una línea cortada a la mitad solo cuenta hasta el corte
+function metrosVivos(live){let m=0;live.forEach(k=>{const cu=EFECTOS.cortes.get(k);
+  if(cu==null){m+=L[k].m;return;}const t=largo(fullPts(L[k]));m+=t?L[k].m*Math.min(1,cu/t):0;});return m;}
 const TOTAL=meters(ALL),CIRC={};ALL.forEach(k=>{CIRC[L[k].circuit]=(CIRC[L[k].circuit]||0)+L[k].m;});
 const SWITCHES=NET.switches.slice().sort((a,b)=>+a.id.slice(1)-+b.id.slice(1));
 SWITCHES.forEach(sw=>{const live=solve(new Set([sw.id]));sw.cut=ALL.filter(k=>!live.has(k));sw.cutM=meters(sw.cut);
@@ -328,6 +348,7 @@ SWITCHES.forEach(sw=>{const live=solve(new Set([sw.id]));sw.cut=ALL.filter(k=>!l
 const gapOf=ln=>Math.hypot(ln.pa[0]-ln.pts[0][0],ln.pa[1]-ln.pts[0][1]);
 const hasLead=ln=>ln.via==='j'&&gapOf(ln)>1.5;
 const fullPts=ln=>hasLead(ln)?[ln.pa].concat(ln.pts):ln.pts;
+const ATT={};ALL.forEach(k=>{const p=L[L[k].parent];if(p&&L[k].pa)ATT[k]=along(fullPts(p),L[k].pa[0],L[k].pa[1]).d;});
 
 /* ---------- dibujo fijo ---------- */
 const gRoad=$('g-road'),gCas=$('g-casing'),gWire=$('g-wire'),gFlow=$('g-flow'),gHit=$('g-hit'),gSym=$('g-sym'),gCut=$('g-cut'),gSel=$('g-sel'),gDoubt=$('g-doubt');
@@ -354,7 +375,7 @@ ALL.forEach(k=>{const h=el('polyline',Object.assign({points:ptsStr(L[k].pts),cla
   h.addEventListener('click',e=>{if(drag.moved)return;e.stopPropagation();pinned=k;showTip(k,e);});});
 
 /* símbolos: se dibujan en pixeles de pantalla y se reescalan con el zoom */
-const SYMS=[];
+const SYMS=[],ESCALAS=[];
 function sym(x,y,cls,parent){const g=el('g',{class:'sym '+(cls||'')},parent||gSym);SYMS.push({g,x,y});return g;}
 const titled=(g,t)=>{const ti=document.createElementNS(NS,'title');ti.textContent=t;g.appendChild(ti);};
 NET.ends.forEach(q=>{const g=sym(q[0],q[1]);titled(g,'Fin de línea');el('circle',{r:3.2,fill:'#0b0f0d',stroke:'#fff','stroke-width':1.3},g);});
@@ -392,21 +413,26 @@ SWITCHES.forEach(sw=>{const g=sym(sw.pos[0],sw.pos[1],'sym-sw');g.setAttribute('
 
 /* ---------- estado ---------- */
 function render(){const live=state.live;gWire.replaceChildren();gFlow.replaceChildren();
-  ALL.forEach(k=>{const ln=L[k],on=live.has(k),per=ln.kind==='perimeter';
-    el('polyline',Object.assign({points:ptsStr(fullPts(ln)),class:'wire '+(on?'on':'off')+(per?' per':'')},NSS),gWire);
-    if(on)el('polyline',Object.assign({points:ptsStr(fullPts(ln)),class:'flow'},NSS),gFlow);});
+  ALL.forEach(k=>{const ln=L[k],on=live.has(k),per=ln.kind==='perimeter',baja=on&&EFECTOS.baja.has(ln.circuit);
+    const cls='wire '+(per?' per':'')+(baja?' baja':''),fp=fullPts(ln),cu=on?EFECTOS.cortes.get(k):null;
+    const [conC,sinC]=cu!=null?splitAt(fp,cu):[fp,null];
+    el('polyline',Object.assign({points:ptsStr(conC),class:cls+(on?' on':' off')},NSS),gWire);
+    if(on)el('polyline',Object.assign({points:ptsStr(conC),class:'flow'+(baja?' baja':'')},NSS),gFlow);
+    if(sinC&&sinC.length>1)el('polyline',Object.assign({points:ptsStr(sinC),class:cls+' off'},NSS),gWire);});
   CABLES.forEach(c=>{const on=live.has(c.k);if(c.path)c.path.setAttribute('class','bridge-arc'+(on?'':' off'));if(c.glyph)c.glyph.setAttribute('stroke',on?'#FFD23F':'#B9A766');});
   SWITCHES.forEach(sw=>{const g=SW_G[sw.id],open=state.open.has(sw.id),r=g.querySelector('.ring');
     r.setAttribute('fill',open?'#4a1512':'#D3261E');r.setAttribute('stroke',open?'#FF5A50':'#fff');r.setAttribute('stroke-dasharray',open?'2.4 1.8':'none');
     g.querySelector('.lever').setAttribute('transform',open?'rotate(-40)':'');g.setAttribute('aria-pressed',open?'true':'false');});
-  const onM=meters(live);$('pw-on').textContent=fmtKm(onM);$('pw-of').textContent='de '+fmtKm(TOTAL);
+  const onM=metrosVivos(live);$('pw-on').textContent=fmtKm(onM);$('pw-of').textContent='de '+fmtKm(TOTAL);
   $('pw-bar').style.width=(onM/TOTAL*100).toFixed(1)+'%';
-  $('pw-circ').replaceChildren(...EN.map(e=>{const d=document.createElement('div');const m=meters(ALL.filter(k=>L[k].circuit===e.id&&live.has(k)));
+  $('pw-circ').replaceChildren(...EN.map(e=>{const d=document.createElement('div');const m=metrosVivos(ALL.filter(k=>L[k].circuit===e.id&&live.has(k)));
     d.textContent=`${e.id==='E2'?'Perímetro':'Interior'}: ${fmtKm(m)} de ${fmtKm(CIRC[e.id]||0)}`;return d;}));
   $('pw-msg').textContent=state.open.size?`Switches abiertos: ${[...state.open].sort((a,b)=>a.slice(1)-b.slice(1)).join(', ')}. Sin corriente: ${fmtM(TOTAL-onM)} de cerca.`:(TOTAL-onM>5?`Todos los switches cerrados. Sin corriente: ${fmtM(TOTAL-onM)} de cerca desconectada.`:'Todos los switches cerrados: toda la cerca tiene corriente.');
   $('reset').disabled=!state.open.size;
   SWITCHES.forEach(sw=>{const row=document.querySelector(`[data-sw="${sw.id}"]`),open=state.open.has(sw.id);
-    row.classList.toggle('open',open);const b=row.querySelector('.toggle');b.setAttribute('aria-pressed',open?'true':'false');b.querySelector('.st').textContent=open?'Abierto':'Cerrado';});}
+    row.classList.toggle('open',open);const b=row.querySelector('.toggle');b.setAttribute('aria-pressed',open?'true':'false');b.querySelector('.st').textContent=open?'Abierto':'Cerrado';});
+  if(alPintar)alPintar(live,onM);}
+let alPintar=null;
 function recompute(){state.live=solve(state.open);render();}
 function toggle(id){state.open.has(id)?state.open.delete(id):state.open.add(id);recompute();}
 function preview(id){gCut.replaceChildren();document.querySelectorAll('.sw-row').forEach(r=>r.classList.toggle('hl',r.dataset.sw===id));
@@ -434,7 +460,7 @@ function clampView(){view.s=Math.min(10,Math.max(1,view.s));view.tx=Math.min(0,M
 function unitPx(){const r=svg.getBoundingClientRect();return Math.min(r.width/W,r.height/H)*view.s;}
 function applyView(){clampView();vp.setAttribute('transform',`translate(${view.tx.toFixed(2)} ${view.ty.toFixed(2)}) scale(${view.s.toFixed(4)})`);
   const u=unitPx()||1,k=1/u;SYM_K=k;SYMS.forEach(o=>o.g.setAttribute('transform',`translate(${o.x} ${o.y}) scale(${k.toFixed(4)})`));
-  if(typeof scalePins==='function')scalePins();
+  if(typeof scalePins==='function')scalePins();ESCALAS.forEach(f=>f(k));
   svg.classList.toggle('zoomed',view.s>1.01);
   const mPerPx=MPP/u,target=mPerPx*110,nice=[10,20,25,50,100,200,250,500,1000].reduce((b,v)=>Math.abs(v-target)<Math.abs(b-target)?v:b,200);
   $('sb-bar').style.width=(nice/mPerPx).toFixed(0)+'px';$('sb-txt').textContent=nice>=1000?(nice/1000)+' km':nice+' m';}
@@ -559,11 +585,19 @@ function startNotes(db){if(!db){db=localStore();LOCAL=true;}DB=db;
       if(editing&&!notes.find(n=>n.id===editing.id))closeForm();
       renderNotes();statusIdle();},
     err=>{clearTimeout(timer);fixStatus.textContent='No se pudieron cargar las correcciones. Vuelve a abrir el mapa más tarde.';});}
-(async()=>{let db=null;
+if(MODO==='mapa')(async()=>{let db=null;
   try{const use=window.claude&&window.claude.use?window.claude.use('db'):null;
     db=use?await Promise.race([use,new Promise(r=>setTimeout(()=>r(null),4000))]):null;}catch(e){db=null;}
   startNotes(db);})();
 
+/* ---------- fallas (sección Fallas y pines en el mapa) ---------- */
+if(MODO==='fallas'){document.title='Fallas del Cerco';document.querySelector('.eyebrow').textContent='Reporte y reparación';
+  document.querySelector('h1').textContent='Fallas del cerco';document.querySelector('.stats').hidden=true;
+  $('mark').hidden=true;document.querySelector('.fixcard').hidden=true;$('hint').hidden=true;document.body.classList.add('f-modo');}
+function medir(ef){const prev=EFECTOS;EFECTOS=ef;const m=metrosVivos(solve(state.open,ef));EFECTOS=prev;return m;}
+if(window.FALLAS_MAPA)FALLAS_MAPA({MODO,L,ALL,EN,NET,el,NS,NSS,ptsStr,fmtM,fmtKm,along,fullPts,toSvg,view,svg,$,drag,focusAt,CIRC_NAME,medir,vivas:ef=>solve(state.open,ef),
+  ponerEfectos:ef=>{EFECTOS=ef;recompute();},alPintar:f=>{alPintar=f;render();},alEscalar:f=>ESCALAS.push(f),
+  reescalar:()=>ESCALAS.forEach(f=>f(SYM_K)),symK:()=>SYM_K});
 applyView();render();
 /* por detrás: si hay una versión más nueva del cerco se ofrece actualizar; si no hay respuesta, se avisa y se puede reintentar */
 const buscar=async(desdeVentana)=>{const lento=desdeVentana?0:setTimeout(()=>Cerco.aviso('Buscando cambios…',{cargando:true}),600);

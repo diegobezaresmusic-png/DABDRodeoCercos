@@ -1,0 +1,699 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#15201A">
+<meta name="description" content="Fallas del Cerco — mapa y editor del cerco eléctrico del rancho.">
+<link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" href="/iconos/icono-192.png" type="image/png">
+<link rel="apple-touch-icon" href="/iconos/apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Cerco">
+<style>:root{color-scheme:light dark}body{margin:0}img{max-width:100%}[hidden]{display:none!important}</style>
+<script src="/config.js"></script>
+<script src="/nube.js"></script>
+<script src="/cerco.js"></script>
+<script src="/red-mapa.js"></script>
+<script src="/fallas.js"></script>
+<script src="/fallas-mapa.js"></script>
+<style>
+#cz-splash{position:fixed;inset:0;z-index:10000;display:grid;place-items:center;background:#15201A;transition:opacity .35s ease}
+html.cz-sin-splash #cz-splash{display:none}
+#cz-splash.fuera{opacity:0;pointer-events:none}
+#cz-splash .cz-s{display:grid;justify-items:center;gap:18px;animation:cz-s-in .55s cubic-bezier(.2,.8,.2,1) both}
+#cz-splash .cz-l{position:relative;width:148px;height:148px}
+#cz-splash .cz-l::before{content:"";position:absolute;inset:-22%;border-radius:50%;background:radial-gradient(circle,rgba(242,183,5,.38),rgba(242,183,5,0) 62%);animation:cz-s-brillo 1.1s ease-in-out infinite alternate}
+#cz-splash .cz-l img{position:relative;width:100%;height:100%}
+#cz-splash p{margin:0;color:#EEF2EC;font:700 24px/1.2 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;letter-spacing:.01em}
+@keyframes cz-s-in{from{opacity:0;transform:scale(.94)}}
+@keyframes cz-s-brillo{from{opacity:.4;transform:scale(.9)}to{opacity:1;transform:scale(1.05)}}
+@media (prefers-reduced-motion:reduce){#cz-splash .cz-s,#cz-splash .cz-l::before{animation:none}}
+</style>
+<script>
+(function () {
+  var h = document.documentElement, ver = true;
+  try { if (sessionStorage.getItem('cerco-splash')) ver = false; else sessionStorage.setItem('cerco-splash', '1'); } catch (e) {}
+  if (!ver) { h.classList.add('cz-sin-splash'); return; }
+  var t0 = Date.now();
+  function quitar() {
+    var s = document.getElementById('cz-splash'); if (!s) return;
+    setTimeout(function () { s.classList.add('fuera'); setTimeout(function () { s.remove(); }, 400); }, Math.max(0, 1000 - (Date.now() - t0)));
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', quitar); else quitar();
+})();
+</script>
+<link rel="apple-touch-startup-image" media="screen and (device-width: 320px) and (device-height: 568px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/iconos/arranque/320x568x2-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 667px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/iconos/arranque/375x667x2-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 736px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/iconos/arranque/414x736x3-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 375px) and (device-height: 812px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/iconos/arranque/375x812x3-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/iconos/arranque/414x896x2-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 414px) and (device-height: 896px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/iconos/arranque/414x896x3-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 390px) and (device-height: 844px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/iconos/arranque/390x844x3-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 428px) and (device-height: 926px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/iconos/arranque/428x926x3-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 393px) and (device-height: 852px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/iconos/arranque/393x852x3-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 430px) and (device-height: 932px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/iconos/arranque/430x932x3-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 402px) and (device-height: 874px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/iconos/arranque/402x874x3-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 440px) and (device-height: 956px) and (-webkit-device-pixel-ratio: 3) and (orientation: portrait)" href="/iconos/arranque/440x956x3-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/iconos/arranque/744x1133x2-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 744px) and (device-height: 1133px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/iconos/arranque/744x1133x2-l.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/iconos/arranque/768x1024x2-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 768px) and (device-height: 1024px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/iconos/arranque/768x1024x2-l.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/iconos/arranque/810x1080x2-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 810px) and (device-height: 1080px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/iconos/arranque/810x1080x2-l.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/iconos/arranque/820x1180x2-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 820px) and (device-height: 1180px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/iconos/arranque/820x1180x2-l.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/iconos/arranque/834x1112x2-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 834px) and (device-height: 1112px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/iconos/arranque/834x1112x2-l.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/iconos/arranque/834x1194x2-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 834px) and (device-height: 1194px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/iconos/arranque/834x1194x2-l.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: portrait)" href="/iconos/arranque/1024x1366x2-p.png">
+<link rel="apple-touch-startup-image" media="screen and (device-width: 1024px) and (device-height: 1366px) and (-webkit-device-pixel-ratio: 2) and (orientation: landscape)" href="/iconos/arranque/1024x1366x2-l.png">
+</head>
+<body>
+<div id="cz-splash" aria-hidden="true"><div class="cz-s"><div class="cz-l"><img src="/iconos/logo.png" alt=""></div><p>Cerco del Rancho</p></div></div>
+
+<title>Cerco Eléctrico del Rancho</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700&family=Barlow:wght@400;500;600&family=IBM+Plex+Mono:wght@500&display=swap">
+<style>
+/* Layout: field-map tool. Satellite map is the hero on the left, a switch board + legend on the right; stacks on phones. */
+:root{
+  --bg:#ECEEE8; --panel:#F8F9F5; --fg:#1C2320; --muted:#5D6862; --rule:#D3D8CF;
+  --amber:#F29F05; --amber-ink:#9A5B00; --red:#D3261E; --blue:#2E6BE6; --cyan:#19B3C6; --ok:#2F8A4E;
+  --chip:#E2E6DD;
+  --map-ink:#0D1210;
+  --f-display:"Barlow Condensed","Arial Narrow",Arial,sans-serif;
+  --f-body:"Barlow","Segoe UI",system-ui,sans-serif;
+  --f-data:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#101412; --panel:#171C19; --fg:#E6EBE5; --muted:#9CA79F; --rule:#2A322D;
+    --amber:#F7AE2A; --amber-ink:#F7C063; --red:#F0453B; --blue:#5B8DF0; --cyan:#3CCBDB; --ok:#55B776;
+    --chip:#222924; color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#101412; --panel:#171C19; --fg:#E6EBE5; --muted:#9CA79F; --rule:#2A322D;
+  --amber:#F7AE2A; --amber-ink:#F7C063; --red:#F0453B; --blue:#5B8DF0; --cyan:#3CCBDB; --ok:#55B776;
+  --chip:#222924; color-scheme:dark;
+}
+html,body{background:var(--bg);color:var(--fg)}
+body{font-family:var(--f-body);font-size:15px;line-height:1.45;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:18px 28px}
+*{box-sizing:border-box}
+.app{max-width:1320px;margin:0 auto;display:grid;gap:14px}
+
+/* header */
+.top{display:flex;flex-wrap:wrap;align-items:end;justify-content:space-between;gap:12px 28px}
+.back{display:inline-flex;align-items:center;gap:2px;margin:0 0 10px;min-height:38px;padding:0 14px 0 8px;border-radius:99px;border:1px solid var(--rule);background:var(--panel);color:var(--fg);text-decoration:none;font:600 15px/1 var(--f-body)}
+.back svg{width:20px;height:20px}
+.back:focus-visible{outline:3px solid var(--amber);outline-offset:2px}
+.eyebrow{margin:0 0 2px;font:600 12px/1 var(--f-display);letter-spacing:.14em;text-transform:uppercase;color:var(--amber-ink)}
+h1{margin:0;font:700 clamp(28px,4vw,40px)/1 var(--f-display);letter-spacing:.01em;text-wrap:balance}
+.stats{display:flex;flex-wrap:wrap;gap:6px 22px;margin:0}
+.stats div{display:grid;gap:1px}
+.stats dt{font:600 11px/1.2 var(--f-display);letter-spacing:.12em;text-transform:uppercase;color:var(--muted)}
+.stats dd{margin:0;font:500 18px/1.2 var(--f-data);font-variant-numeric:tabular-nums}
+
+/* main grid */
+.layout{display:grid;grid-template-columns:minmax(0,auto) minmax(300px,380px);gap:16px;align-items:start;justify-content:center}
+.mapwrap{position:relative;height:calc(100dvh - 120px);min-height:520px;aspect-ratio:976/1170;max-width:100%;
+  border-radius:10px;overflow:hidden;background:var(--map-ink);box-shadow:0 1px 0 var(--rule),0 10px 30px -18px rgba(0,0,0,.6)}
+#map{display:block;width:100%;height:100%;touch-action:pan-y;cursor:grab;user-select:none;-webkit-user-select:none}
+#map.zoomed{touch-action:none}
+#map.dragging{cursor:grabbing}
+.photo{filter:saturate(.92) brightness(.86) contrast(1.04)}
+
+/* fence drawing */
+.barb{fill:none;stroke:#D9B38C;stroke-width:2;stroke-dasharray:5 4;stroke-linecap:round;opacity:.9}
+.nueva{position:fixed;z-index:50;left:50%;bottom:calc(env(safe-area-inset-bottom,0px) + 16px);transform:translateX(-50%);display:flex;gap:10px;align-items:center;max-width:min(92vw,440px);padding:10px 10px 10px 14px;border-radius:14px;background:#15201A;color:#EEF2EC;font:14px/1.35 var(--f-body);box-shadow:0 8px 28px rgba(0,0,0,.35)}
+.nueva button{flex:none;border:0;border-radius:10px;padding:10px 14px;background:#F29F05;color:#1D1600;font:700 14px var(--f-body);cursor:pointer}
+.casing{fill:none;stroke:#07100c;stroke-opacity:.55;stroke-width:4.4;stroke-linecap:round;stroke-linejoin:round}
+.wire{fill:none;stroke-width:2.1;stroke-linecap:round;stroke-linejoin:round}
+.wire.on{stroke:#FFF1C9}
+.wire.per.on{stroke:#6FE3EE}
+.wire.off{stroke:#8E9590;stroke-dasharray:3 4;stroke-opacity:.85}
+.flow{fill:none;stroke:#FFB21E;stroke-width:2.4;stroke-linecap:round;stroke-dasharray:1.5 11;animation:flow 1.15s linear infinite}
+@keyframes flow{to{stroke-dashoffset:-12.5}}
+.cut{fill:none;stroke:#FF3B30;stroke-opacity:.55;stroke-width:8;stroke-linecap:round;stroke-linejoin:round}
+.sel{fill:none;stroke:#fff;stroke-opacity:.35;stroke-width:9;stroke-linecap:round;stroke-linejoin:round}
+.hit{fill:none;stroke:transparent;stroke-width:14;stroke-linecap:round;pointer-events:stroke;cursor:pointer}
+.road{fill:none;stroke:#9C7A55;stroke-width:6.5;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:.9}
+.road-edge{fill:none;stroke:#3E2E1C;stroke-width:8.3;stroke-linecap:round;stroke-linejoin:round;stroke-opacity:.55}
+.bridge-arc{fill:none;stroke:#FFD23F;stroke-width:2.2;stroke-linecap:round}
+.bridge-arc.off{stroke:#B9A766;stroke-dasharray:2 3}
+.sym{cursor:default}
+.sym-sw{cursor:pointer}
+.sym-sw:focus{outline:none}
+.sym-sw:focus-visible .ring{stroke:#fff;stroke-width:2.5}
+.lbl{font:600 11px var(--f-display);letter-spacing:.04em;fill:#fff;paint-order:stroke;stroke:#08100c;stroke-width:3px;stroke-linejoin:round}
+.place{font:700 12px var(--f-display);letter-spacing:.16em;text-transform:uppercase;fill:#F4F1E6;paint-order:stroke;stroke:#08100c;stroke-width:3.5px}
+@keyframes pulse{0%{r:11;opacity:.7}100%{r:24;opacity:0}}
+.pulse{fill:none;stroke-width:2;animation:pulse 1.8s ease-out infinite}
+
+/* map overlay controls */
+.mapui{position:absolute;inset:auto 10px 10px auto;display:flex;flex-direction:column;gap:6px}
+.mapui button{width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(10,16,13,.78);color:#F2F4EF;
+  font:600 18px/1 var(--f-body);cursor:pointer;display:grid;place-items:center;backdrop-filter:blur(4px)}
+.mapui button:hover{background:rgba(25,35,30,.92)}
+.mapui button:focus-visible,.sw-row button:focus-visible,.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.scalebar{position:absolute;left:10px;bottom:12px;color:#F2F4EF;font:500 11px var(--f-data);display:grid;gap:3px;
+  padding:6px 8px;border-radius:6px;background:rgba(10,16,13,.62)}
+.scalebar i{display:block;height:6px;border:1.5px solid #F2F4EF;border-top:0}
+.hint{position:absolute;left:10px;top:10px;max-width:min(70%,330px);padding:7px 10px;border-radius:7px;background:rgba(10,16,13,.72);
+  color:#EDEFE9;font:500 12.5px/1.35 var(--f-body);backdrop-filter:blur(4px)}
+.tip{position:absolute;pointer-events:none;z-index:5;min-width:150px;max-width:240px;padding:8px 10px;border-radius:7px;
+  background:rgba(8,12,10,.92);color:#F2F4EF;font:13px/1.35 var(--f-body);box-shadow:0 6px 18px rgba(0,0,0,.4)}
+.tip b{display:block;font:600 14px/1.2 var(--f-display);letter-spacing:.03em}
+.tip .m{font-family:var(--f-data);font-size:12px;color:#C9D0C9}
+.state{display:inline-block;margin-top:4px;padding:1px 7px;border-radius:99px;font:600 11px/1.6 var(--f-display);letter-spacing:.08em;text-transform:uppercase}
+.state.on{background:#FFB21E;color:#1d1300}
+.state.off{background:#5A615C;color:#fff}
+
+/* panel */
+.panel{display:grid;gap:14px;align-content:start;min-width:0;max-height:calc(100dvh - 120px);overflow:auto;padding-right:2px}
+.card{background:var(--panel);border:1px solid var(--rule);border-radius:10px;padding:14px 14px 12px;min-width:0}
+.card h2{margin:0 0 8px;font:700 15px/1.1 var(--f-display);letter-spacing:.12em;text-transform:uppercase}
+.power{display:grid;gap:7px}
+.power .row{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.power .big{font:500 24px/1 var(--f-data);font-variant-numeric:tabular-nums}
+.power .of{color:var(--muted);font:500 13px var(--f-data)}
+.bar{height:8px;border-radius:99px;background:var(--chip);overflow:hidden}
+.bar i{display:block;height:100%;width:100%;background:linear-gradient(90deg,var(--amber),#FFD23F);transition:width .35s ease}
+.power p{margin:0;color:var(--muted);font-size:13px}
+.btn{justify-self:start;border:1px solid var(--rule);background:var(--chip);color:var(--fg);border-radius:7px;padding:6px 11px;font:600 13px var(--f-body);cursor:pointer}
+.btn:disabled{opacity:.5;cursor:default}
+.sw-list{list-style:none;margin:0;padding:0;display:grid}
+.sw-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid var(--rule)}
+.sw-row:first-child{border-top:0}
+.sw-row.hl{background:color-mix(in srgb,var(--red) 8%,transparent)}
+.tag{font:600 13px/1 var(--f-data);min-width:34px;text-align:center;padding:5px 0;border-radius:6px;background:var(--red);color:#fff}
+.sw-row.open .tag{background:transparent;color:var(--red);box-shadow:inset 0 0 0 1.5px var(--red)}
+.sw-name{font-weight:600;font-size:14px;line-height:1.2}
+.sw-cut{color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
+.toggle{border:0;background:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:7px;color:var(--muted);font:600 11px var(--f-display);letter-spacing:.1em;text-transform:uppercase}
+.toggle .trk{width:38px;height:22px;border-radius:99px;background:var(--ok);position:relative;transition:background .2s}
+.toggle .trk::after{content:"";position:absolute;top:3px;left:19px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s}
+.toggle[aria-pressed="true"] .trk{background:#8B938E}
+.toggle[aria-pressed="true"] .trk::after{left:3px}
+.toggle .st{min-width:54px;text-align:right}
+.legend{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin:0;padding:0;list-style:none}
+.legend li{display:flex;align-items:center;gap:8px;font-size:13px;min-width:0}
+.legend svg{flex:none;width:30px;height:18px;border-radius:4px;background:#1E2A24}
+.note{margin:8px 0 0;color:var(--muted);font-size:12.5px}
+
+/* correction mode */
+.markbtn{position:absolute;top:10px;right:10px;display:flex;align-items:center;gap:7px;padding:8px 13px;border-radius:99px;border:1px solid rgba(255,255,255,.25);
+  background:#E0338A;color:#fff;font:600 13.5px/1 var(--f-body);cursor:pointer;box-shadow:0 4px 14px rgba(0,0,0,.35)}
+.markbtn svg{width:15px;height:15px}
+.markbtn[aria-pressed="true"]{background:#fff;color:#B01F68}
+.markbtn:disabled{background:rgba(10,16,13,.75);color:#9aa39d;cursor:default}
+.markbtn:focus-visible{outline:2px solid #fff;outline-offset:2px}
+#map.marking{cursor:crosshair}
+.pin{cursor:pointer}
+.pin-n{font:700 11px var(--f-data);pointer-events:none}
+.fix-form{position:absolute;top:10px;left:10px;width:min(340px,calc(100% - 20px));display:grid;gap:7px;padding:12px;border-radius:10px;
+  background:rgba(10,16,13,.94);color:#F2F4EF;box-shadow:0 10px 28px rgba(0,0,0,.5);border:1px solid #E0338A;z-index:6}
+.fix-head{display:grid;gap:2px}
+.fix-head b{font:700 16px/1.1 var(--f-display);letter-spacing:.04em}
+.fix-head span{color:#C9D0C9;font-size:12.5px}
+.fix-form label{font:600 11px var(--f-display);letter-spacing:.12em;text-transform:uppercase;color:#AEB7B0}
+.fix-form select,.fix-form textarea{width:100%;font:14px/1.35 var(--f-body);color:#F2F4EF;background:#1C2420;border:1px solid #3A443E;border-radius:6px;padding:7px 8px}
+.fix-form textarea{resize:vertical;min-height:64px}
+.fix-form select:focus-visible,.fix-form textarea:focus-visible{outline:2px solid #E0338A;outline-offset:1px}
+.fix-acts{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+.fix-acts .btn{background:#2A332E;color:#F2F4EF;border-color:#3A443E}
+.fix-acts .btn.primary{background:#E0338A;border-color:#E0338A;color:#fff}
+.fix-msg{font-size:12.5px;color:#FFB4D4}
+.fix-tip{margin:0;color:#AEB7B0;font-size:12px}
+.fixcard .btn.primary{background:#E0338A;border-color:#E0338A;color:#fff}
+.fixcard .btn.primary[aria-pressed="true"]{background:var(--chip);color:var(--fg);border-color:var(--rule)}
+.fix-status{margin:0 0 8px;color:var(--muted);font-size:13px}
+.fix-list{list-style:none;margin:0 0 10px;padding:0;display:grid}
+.fix-row{display:grid;grid-template-columns:auto 1fr;gap:4px 10px;padding:8px 2px;border-top:1px solid var(--rule)}
+.fix-row:first-child{border-top:0}
+.fix-row.hl{background:color-mix(in srgb,#E0338A 10%,transparent)}
+.fix-row.done{opacity:.6}
+.pin-tag{grid-row:span 2;align-self:start;min-width:26px;height:26px;border-radius:50% 50% 50% 4px;display:grid;place-items:center;background:#E0338A;color:#fff;font:700 12px var(--f-data);cursor:pointer;border:0}
+.fix-row.done .pin-tag{background:#6B746E}
+.fix-txt{min-width:0}
+.fix-txt b{font-size:14px}
+.fix-txt .near{color:var(--muted);font-size:12.5px}
+.fix-txt p{margin:2px 0 0;font-size:13.5px;overflow-wrap:anywhere;white-space:pre-wrap}
+.fix-row-acts{grid-column:2;display:flex;flex-wrap:wrap;gap:6px 12px;align-items:center;font-size:12.5px}
+.fix-row-acts button{border:0;background:none;padding:2px 0;color:var(--amber-ink);font:600 12.5px var(--f-body);cursor:pointer;text-decoration:underline;text-underline-offset:2px}
+.fix-row-acts button.danger{color:var(--red)}
+.fix-row-acts button:focus-visible,.pin-tag:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+
+/* dudas y circuitos */
+.circ{display:flex;flex-wrap:wrap;gap:2px 16px;color:var(--muted);font:500 12.5px var(--f-data);font-variant-numeric:tabular-nums}
+.bridge-case{fill:none;stroke:#0b0f0d;stroke-opacity:.6;stroke-width:4.4;stroke-linecap:round}
+.doubt{cursor:pointer}
+.doubt-n{font:700 9.5px var(--f-data);fill:#fff;pointer-events:none}
+.dz-toggle{display:flex;align-items:center;gap:8px;font-size:13px;color:var(--muted);margin:0 0 6px}
+.dz-list{list-style:none;margin:0;padding:0;display:grid}
+.dz-row{display:grid;grid-template-columns:auto 1fr;gap:10px;padding:8px 2px;border-top:1px solid var(--rule);align-items:start}
+.dz-row:first-child{border-top:0}
+.dz-row.hl{background:color-mix(in srgb,#7C4DFF 12%,transparent)}
+.dz-row p{margin:0;font-size:13.5px;min-width:0;overflow-wrap:anywhere}
+.dz-tag{min-width:34px;border:0;border-radius:99px;padding:5px 0;background:#7C4DFF;color:#fff;font:700 12px var(--f-data);cursor:pointer}
+.dz-tag:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.dz-done{color:var(--fg)}
+.fix-btns{display:flex;flex-wrap:wrap;gap:8px}
+.copy-out{width:100%;margin-top:8px;font:12.5px/1.4 var(--f-data);color:var(--fg);background:var(--chip);border:1px solid var(--rule);border-radius:6px;padding:8px}
+@media (max-width:900px){
+  .layout{grid-template-columns:minmax(0,1fr)}
+  .mapwrap{height:auto;width:100%;min-height:0}
+  .panel{max-height:none;overflow:visible}
+}
+@media (max-width:420px){ .legend{grid-template-columns:1fr} .hint{font-size:12px} }
+@media (prefers-reduced-motion:reduce){ .flow,.pulse{animation:none} .bar i,.toggle .trk,.toggle .trk::after{transition:none} }
+</style>
+
+<div class="app">
+  <header class="top">
+    <div>
+      <a class="back" href="/" aria-label="Volver al inicio"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 18-6-6 6-6"/></svg>Inicio</a>
+      <p class="eyebrow">Plano de cercado sobre vista satelital</p>
+      <h1>Cerco eléctrico del rancho</h1>
+    </div>
+    <dl class="stats">
+      <div><dt>Circuito interior</dt><dd id="st-int">–</dd></div>
+      <div><dt>Circuito perímetro</dt><dd id="st-per">–</dd></div>
+      <div><dt>Switches</dt><dd id="st-sw">–</dd></div>
+      <div><dt>Cables</dt><dd id="st-br">–</dd></div>
+      <div><dt>Puertas</dt><dd id="st-gt">–</dd></div>
+    </dl>
+  </header>
+
+  <main class="layout">
+    <section class="mapwrap" id="mapwrap" aria-label="Mapa del cercado">
+      <svg id="map" viewBox="0 0 976 1170" preserveAspectRatio="xMidYMid meet" role="img" aria-label="Cercas eléctricas del rancho sobre la foto satelital">
+        <g id="vp">
+          <image class="photo" href="/datos/rancho.jpg" x="0" y="0" width="976" height="1170" preserveAspectRatio="none"/>
+          <g id="g-road"></g>
+          <g id="g-cut"></g>
+          <g id="g-sel"></g>
+          <g id="g-casing"></g>
+          <g id="g-wire"></g>
+          <g id="g-flow"></g>
+          <g id="g-hit"></g>
+          <g id="g-sym"></g>
+          <g id="g-doubt"></g>
+          <g id="g-pins"></g>
+        </g>
+      </svg>
+      <div class="hint" id="hint">Toca un switch rojo para abrirlo y ver qué cercas se quedan sin corriente.</div>
+      <div class="scalebar" aria-hidden="true"><span id="sb-txt">200 m</span><i id="sb-bar"></i></div>
+      <div class="mapui">
+        <button type="button" id="zin" aria-label="Acercar">+</button>
+        <button type="button" id="zout" aria-label="Alejar">−</button>
+        <button type="button" id="zfit" aria-label="Ver todo el rancho">⤢</button>
+      </div>
+      <button type="button" class="markbtn" id="mark" aria-pressed="false" disabled><svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 15s5-4.6 5-8.5A5 5 0 0 0 3 6.5C3 10.4 8 15 8 15z" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="8" cy="6.5" r="1.8" fill="currentColor"/></svg><span id="mark-txt">Marcar corrección</span></button>
+      <form class="fix-form" id="fix-form" hidden>
+        <div class="fix-head"><b id="fix-title">Corrección nueva</b><span id="fix-near"></span></div>
+        <label for="fix-tipo">Qué está mal</label>
+        <select id="fix-tipo"></select>
+        <label for="fix-nota">Explícalo</label>
+        <textarea id="fix-nota" rows="3" maxlength="600" placeholder="Ej: aquí no hay switch, va más abajo donde se juntan las líneas"></textarea>
+        <div class="fix-acts"><button type="submit" class="btn primary" id="fix-save">Guardar</button><button type="button" class="btn" id="fix-cancel">Cancelar</button><span class="fix-msg" id="fix-msg" role="status"></span></div>
+        <p class="fix-tip">Si el pin quedó mal, toca otro punto del mapa para moverlo.</p>
+      </form>
+      <div class="tip" id="tip" hidden></div>
+    </section>
+
+    <aside class="panel">
+      <section class="card power" aria-live="polite">
+        <h2>Corriente</h2>
+        <div class="row"><span class="big" id="pw-on">–</span><span class="of" id="pw-of">–</span></div>
+        <div class="bar"><i id="pw-bar"></i></div>
+        <div class="circ" id="pw-circ"></div>
+        <p id="pw-msg">Todos los switches cerrados: toda la cerca tiene corriente.</p>
+        <button type="button" class="btn" id="reset" disabled>Cerrar todos los switches</button>
+      </section>
+
+      <section class="card fixcard">
+        <h2>Correcciones</h2>
+        <p class="fix-status" id="fix-status" role="status">Cargando correcciones…</p>
+        <ul class="fix-list" id="fix-list"></ul>
+        <div class="fix-btns"><button type="button" class="btn primary" id="mark2" aria-pressed="false" disabled>Marcar corrección</button></div>
+        <p class="note">Toca «Marcar corrección», luego el lugar del mapa, y escribe qué está mal.</p>
+      </section>
+
+      <section class="card">
+        <h2>Switches</h2>
+        <ul class="sw-list" id="sw-list"></ul>
+        <p class="note">Al abrir un switch se corta todo lo que sigue después de él en el sentido del flujo.</p>
+      </section>
+
+      <section class="card">
+        <h2>Simbología</h2>
+        <ul class="legend">
+          <li><svg viewBox="0 0 30 18"><circle cx="15" cy="9" r="7" fill="#151a17" stroke="#FFD23F" stroke-width="1.6"/><path d="M16 3.6 11.6 10h3l-1 4.4 4.6-6.6h-3z" fill="#FFD23F"/></svg>Energizador (2)</li>
+          <li><svg viewBox="0 0 30 18"><path d="M3 9h24" stroke="#FFF1C9" stroke-width="2.2"/><path d="M3 9h24" stroke="#FFB21E" stroke-width="2.4" stroke-dasharray="1.5 6" stroke-linecap="round"/></svg>Cerca con corriente</li>
+          <li><svg viewBox="0 0 30 18"><path d="M3 9h24" stroke="#8E9590" stroke-width="2" stroke-dasharray="3 3"/></svg>Sin corriente</li>
+          <li><svg viewBox="0 0 30 18"><path d="M3 9h24" stroke="#6FE3EE" stroke-width="2.4"/></svg>Cerco perimetral</li>
+          <li><svg viewBox="0 0 30 18"><circle cx="15" cy="9" r="6.5" fill="#D3261E" stroke="#fff" stroke-width="1.4"/><path d="M11 9h8" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>Switch cerrado</li>
+          <li><svg viewBox="0 0 30 18"><circle cx="15" cy="9" r="6.5" fill="#4a1512" stroke="#FF5A50" stroke-width="1.4" stroke-dasharray="2 1.6"/><path d="M11.5 11.5 18.5 6.5" stroke="#fff" stroke-width="2" stroke-linecap="round"/></svg>Switch abierto</li>
+          <li><svg viewBox="0 0 30 18"><path d="M5 12 Q15 0 25 12" fill="none" stroke="#FFD23F" stroke-width="2.2" stroke-linecap="round"/></svg>Cable sobre puerta</li>
+          <li><svg viewBox="0 0 30 18"><rect x="9" y="3" width="12" height="12" rx="2.5" fill="#2E6BE6" stroke="#fff" stroke-width="1.2"/><path d="M12 6v6M18 6v6M12 9h6" stroke="#fff" stroke-width="1.3"/></svg>Puerta</li>
+          <li><svg viewBox="0 0 30 18"><path d="M3 9h12" stroke="#FFF1C9" stroke-width="2.2"/><circle cx="16" cy="9" r="3" fill="#0b0f0d" stroke="#fff" stroke-width="1.2"/></svg>Fin de línea</li>
+          <li><svg viewBox="0 0 30 18"><path d="M2 9h26" stroke="#3E2E1C" stroke-width="7"/><path d="M2 9h26" stroke="#9C7A55" stroke-width="5"/></svg>Camino de entrada</li>
+        </ul>
+        <p class="note">Medidas aproximadas, calculadas con la escala de Google Earth (400 m). Toca cualquier línea para ver su largo.</p>
+      </section>
+    </aside>
+  </main>
+</div>
+
+<script>
+(async () => {
+// El cerco sale de la fuente única (cerco.js), la misma que usa el editor; red-mapa.js lo pasa al formato del mapa.
+const RED_USADA = await Cerco.inicial();
+if (!RED_USADA) { document.getElementById('pw-msg').textContent = 'No se pudo cargar el cerco. Conéctate a internet y vuelve a abrir.'; return; }
+const NET = RED_MAPA.convertir(RED_USADA.net);
+const ROAD = [[733,160],[407,529],[389,550],[352,524],[336,508]];
+const PLACES = [{t:'Casa',x:322,y:448},{t:'Entrada',x:736,y:140}];
+const CIRC_NAME = {E1:'circuito interior',E2:'circuito del perímetro'};
+
+const NS='http://www.w3.org/2000/svg';
+const $=id=>document.getElementById(id);
+const el=(tag,attrs,parent)=>{const n=document.createElementNS(NS,tag);for(const k in attrs)n.setAttribute(k,attrs[k]);if(parent)parent.appendChild(n);return n;};
+const fmtM=m=>m>=1000?(m/1000).toFixed(2).replace(/\.?0+$/,'')+' km':Math.round(m)+' m';
+const fmtKm=m=>(m/1000).toFixed(1)+' km';
+const ptsStr=p=>p.map(q=>q[0].toFixed(1)+','+q[1].toFixed(1)).join(' ');
+const NSS={'vector-effect':'non-scaling-stroke'};
+
+/* ---------- red: cada línea recibe corriente de su "padre" ---------- */
+const L=NET.lines, MPP=NET.mpp, EN=NET.energizers, ALL=Object.keys(L);
+const KIDS={};ALL.forEach(k=>{(KIDS[L[k].parent]=KIDS[L[k].parent]||[]).push(k);});
+/* fallas (sección Fallas): cortes a media línea, energizadores apagados y circuitos con corriente baja */
+const MODO=location.pathname.startsWith('/fallas')?'fallas':'mapa';
+const SIN_EFECTOS={cortes:new Map(),enOff:new Set(),baja:new Set()};
+let EFECTOS=SIN_EFECTOS;
+function along(pts,x,y){let best={dist:Infinity,d:0,pt:pts[0]},acc=0;
+  if(pts.length<2)return {dist:Math.hypot(pts[0][0]-x,pts[0][1]-y),d:0,pt:pts[0]};
+  for(let i=0;i<pts.length-1;i++){const a=pts[i],b=pts[i+1],dx=b[0]-a[0],dy=b[1]-a[1],len=Math.hypot(dx,dy),q=len*len||1;
+    let t=((x-a[0])*dx+(y-a[1])*dy)/q;t=Math.max(0,Math.min(1,t));const px=a[0]+t*dx,py=a[1]+t*dy,dd=Math.hypot(px-x,py-y);
+    if(dd<best.dist)best={dist:dd,d:acc+t*len,pt:[px,py]};acc+=len;}
+  return best;}
+function splitAt(pts,d){const a=[pts[0]];let acc=0;
+  for(let i=0;i<pts.length-1;i++){const p=pts[i],q=pts[i+1],len=Math.hypot(q[0]-p[0],q[1]-p[1]);
+    if(acc+len>=d){const t=len?(d-acc)/len:0,m=[p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t];a.push(m);return [a,[m].concat(pts.slice(i+1))];}
+    a.push(q);acc+=len;}
+  return [a,[pts[pts.length-1]]];}
+function solve(open,ef){ef=ef||EFECTOS;const live=new Set(),st=EN.filter(e=>!e.off&&!ef.enOff.has(e.id)).map(e=>e.id);
+  while(st.length){const u=st.pop(),cu=ef.cortes.get(u);
+    for(const c of KIDS[u]||[]){if(L[c].sw&&open.has(L[c].sw))continue;if(cu!=null&&(ATT[c]||0)>=cu-0.5)continue;live.add(c);st.push(c);}}
+  return live;}
+const meters=keys=>{let m=0;keys.forEach(k=>m+=L[k].m);return m;};
+const largo=p=>{let s=0;for(let i=0;i<p.length-1;i++)s+=Math.hypot(p[i+1][0]-p[i][0],p[i+1][1]-p[i][1]);return s;};
+// metros con corriente: una línea cortada a la mitad solo cuenta hasta el corte
+function metrosVivos(live){let m=0;live.forEach(k=>{const cu=EFECTOS.cortes.get(k);
+  if(cu==null){m+=L[k].m;return;}const t=largo(fullPts(L[k]));m+=t?L[k].m*Math.min(1,cu/t):0;});return m;}
+const TOTAL=meters(ALL),CIRC={};ALL.forEach(k=>{CIRC[L[k].circuit]=(CIRC[L[k].circuit]||0)+L[k].m;});
+const SWITCHES=NET.switches.slice().sort((a,b)=>+a.id.slice(1)-+b.id.slice(1));
+SWITCHES.forEach(sw=>{const live=solve(new Set([sw.id]));sw.cut=ALL.filter(k=>!live.has(k));sw.cutM=meters(sw.cut);
+  const first=ALL.find(k=>L[k].sw===sw.id);sw.circuit=first?L[first].circuit:'E1';});
+const gapOf=ln=>Math.hypot(ln.pa[0]-ln.pts[0][0],ln.pa[1]-ln.pts[0][1]);
+const hasLead=ln=>ln.via==='j'&&gapOf(ln)>1.5;
+const fullPts=ln=>hasLead(ln)?[ln.pa].concat(ln.pts):ln.pts;
+const ATT={};ALL.forEach(k=>{const p=L[L[k].parent];if(p&&L[k].pa)ATT[k]=along(fullPts(p),L[k].pa[0],L[k].pa[1]).d;});
+
+/* ---------- dibujo fijo ---------- */
+const gRoad=$('g-road'),gCas=$('g-casing'),gWire=$('g-wire'),gFlow=$('g-flow'),gHit=$('g-hit'),gSym=$('g-sym'),gCut=$('g-cut'),gSel=$('g-sel'),gDoubt=$('g-doubt');
+el('polyline',{points:ptsStr(ROAD),class:'road-edge'},gRoad);el('polyline',{points:ptsStr(ROAD),class:'road'},gRoad);
+(NET.barb||[]).forEach(b=>{const p=el('polyline',Object.assign({points:ptsStr(b.pts),class:'barb'},NSS),gRoad);const ti=document.createElementNS(NS,'title');ti.textContent=b.name+' · sin corriente · '+fmtM(b.m);p.appendChild(ti);});
+ALL.forEach(k=>el('polyline',Object.assign({points:ptsStr(fullPts(L[k])),class:'casing'},NSS),gCas));
+
+const tip=$('tip'),wrap=$('mapwrap'),svg=$('map'),vp=$('vp');
+const state={open:new Set(NET.abiertos||[]),live:null};state.live=solve(state.open);
+let pinned=null;
+function showTip(k,evt){const ln=L[k],on=state.live.has(k);
+  tip.innerHTML=`<b></b><span class="m">${fmtM(ln.m)} · ${CIRC_NAME[ln.circuit]||''}</span><br><span class="state ${on?'on':'off'}">${on?'Con corriente':'Sin corriente'}</span>`;
+  tip.querySelector('b').textContent=ln.name;
+  tip.hidden=false;const r=wrap.getBoundingClientRect();let x=evt.clientX-r.left+14,y=evt.clientY-r.top+14;
+  const w=tip.offsetWidth,h=tip.offsetHeight;if(x+w>r.width-8)x=evt.clientX-r.left-w-14;if(y+h>r.height-8)y=evt.clientY-r.top-h-14;
+  tip.style.left=Math.max(8,x)+'px';tip.style.top=Math.max(8,y)+'px';
+  gSel.replaceChildren();el('polyline',Object.assign({points:ptsStr(ln.pts),class:'sel'},NSS),gSel);}
+function hideTip(){tip.hidden=true;gSel.replaceChildren();pinned=null;}
+const drag={active:false,moved:false,last:null,pinch:null};
+ALL.forEach(k=>{const h=el('polyline',Object.assign({points:ptsStr(L[k].pts),class:'hit'},NSS),gHit);
+  h.addEventListener('pointerenter',e=>{if(e.pointerType==='mouse'&&!drag.moved)showTip(k,e);});
+  h.addEventListener('pointermove',e=>{if(e.pointerType==='mouse'&&!drag.active)showTip(k,e);});
+  h.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse'&&pinned!==k)hideTip();});
+  h.addEventListener('click',e=>{if(drag.moved)return;e.stopPropagation();pinned=k;showTip(k,e);});});
+
+/* símbolos: se dibujan en pixeles de pantalla y se reescalan con el zoom */
+const SYMS=[],ESCALAS=[];
+function sym(x,y,cls,parent){const g=el('g',{class:'sym '+(cls||'')},parent||gSym);SYMS.push({g,x,y});return g;}
+const titled=(g,t)=>{const ti=document.createElementNS(NS,'title');ti.textContent=t;g.appendChild(ti);};
+NET.ends.forEach(q=>{const g=sym(q[0],q[1]);titled(g,'Fin de línea');el('circle',{r:3.2,fill:'#0b0f0d',stroke:'#fff','stroke-width':1.3},g);});
+const seenG=new Set();
+NET.gates.forEach(([x,y])=>{const id=Math.round(x)+','+Math.round(y);if(seenG.has(id))return;seenG.add(id);const g=sym(x,y);titled(g,'Puerta');
+  el('rect',{x:-4.5,y:-4.5,width:9,height:9,rx:2,fill:'#2E6BE6',stroke:'#fff','stroke-width':1.1},g);
+  el('path',{d:'M-2-2.2v4.4M2-2.2v4.4M-2 0h4',stroke:'#fff','stroke-width':1.1,fill:'none'},g);});
+/* cablecitos sobre puertas */
+const gArc=el('g',{});gFlow.parentNode.insertBefore(gArc,gHit);
+const CABLES=[];
+ALL.forEach(k=>{const ln=L[k];if(ln.via!=='br')return;const a=ln.pa,b=ln.pts[0],d=gapOf(ln);
+  if(d>=4){const mx=(a[0]+b[0])/2,my=(a[1]+b[1])/2,nx=-(b[1]-a[1])/d,ny=(b[0]-a[0])/d,bow=Math.min(8,d*.4);
+    const dd=`M${a[0]},${a[1]} Q${mx+nx*bow},${my+ny*bow} ${b[0]},${b[1]}`;
+    el('path',Object.assign({d:dd,class:'bridge-case'},NSS),gArc);
+    CABLES.push({k,path:el('path',Object.assign({d:dd,class:'bridge-arc'},NSS),gArc)});}
+  else{const g=sym((a[0]+b[0])/2,(a[1]+b[1])/2);titled(g,'Cable sobre puerta');
+    el('path',{d:'M-6 2.5 Q0 -7.5 6 2.5',fill:'none',stroke:'#0b0f0d','stroke-width':4.2,'stroke-linecap':'round'},g);
+    CABLES.push({k,glyph:el('path',{d:'M-6 2.5 Q0 -7.5 6 2.5',fill:'none',stroke:'#FFD23F','stroke-width':2,'stroke-linecap':'round'},g)});}});
+PLACES.forEach(p=>{const g=sym(p.x,p.y);el('text',{class:'place','text-anchor':'middle'},g).textContent=p.t;});
+EN.forEach(e=>{const g=sym(e.pos[0],e.pos[1]);titled(g,e.name);const per=e.id==='E2',col=per?'#6FE3EE':'#FFD23F';
+  el('circle',{r:11,class:'pulse',stroke:col},g);el('circle',{r:11,fill:'#151a17',stroke:col,'stroke-width':2},g);
+  el('path',{d:'M1.8-7.2-4.4 1.6H0l-1.6 6 6.6-9.2H.6z',fill:col},g);
+  const t=el('text',per?{class:'lbl',x:-15,y:4,'text-anchor':'end'}:{class:'lbl',x:15,y:15},g);t.textContent=per?'Energizador del perímetro':'Energizador interior';});
+const SW_G={};
+SWITCHES.forEach(sw=>{const g=sym(sw.pos[0],sw.pos[1],'sym-sw');g.setAttribute('tabindex','0');g.setAttribute('role','button');
+  g.setAttribute('aria-label','Switch '+sw.id+': '+sw.name);
+  el('circle',{r:13,fill:'transparent'},g);
+  el('circle',{class:'ring',r:7.5,fill:'#D3261E',stroke:'#fff','stroke-width':1.5},g);
+  el('path',{class:'lever',d:'M-4.2 0h8.4',stroke:'#fff','stroke-width':2.2,'stroke-linecap':'round'},g);
+  el('text',{class:'lbl',x:10,y:-7},g).textContent=sw.id;
+  g.addEventListener('click',e=>{e.stopPropagation();if(drag.moved)return;toggle(sw.id);flashRow(sw.id);});
+  g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle(sw.id);}});
+  g.addEventListener('pointerenter',()=>preview(sw.id));g.addEventListener('pointerleave',()=>preview(null));
+  SW_G[sw.id]=g;});
+
+/* ---------- estado ---------- */
+function render(){const live=state.live;gWire.replaceChildren();gFlow.replaceChildren();
+  ALL.forEach(k=>{const ln=L[k],on=live.has(k),per=ln.kind==='perimeter',baja=on&&EFECTOS.baja.has(ln.circuit);
+    const cls='wire '+(per?' per':'')+(baja?' baja':''),fp=fullPts(ln),cu=on?EFECTOS.cortes.get(k):null;
+    const [conC,sinC]=cu!=null?splitAt(fp,cu):[fp,null];
+    el('polyline',Object.assign({points:ptsStr(conC),class:cls+(on?' on':' off')},NSS),gWire);
+    if(on)el('polyline',Object.assign({points:ptsStr(conC),class:'flow'+(baja?' baja':'')},NSS),gFlow);
+    if(sinC&&sinC.length>1)el('polyline',Object.assign({points:ptsStr(sinC),class:cls+' off'},NSS),gWire);});
+  CABLES.forEach(c=>{const on=live.has(c.k);if(c.path)c.path.setAttribute('class','bridge-arc'+(on?'':' off'));if(c.glyph)c.glyph.setAttribute('stroke',on?'#FFD23F':'#B9A766');});
+  SWITCHES.forEach(sw=>{const g=SW_G[sw.id],open=state.open.has(sw.id),r=g.querySelector('.ring');
+    r.setAttribute('fill',open?'#4a1512':'#D3261E');r.setAttribute('stroke',open?'#FF5A50':'#fff');r.setAttribute('stroke-dasharray',open?'2.4 1.8':'none');
+    g.querySelector('.lever').setAttribute('transform',open?'rotate(-40)':'');g.setAttribute('aria-pressed',open?'true':'false');});
+  const onM=metrosVivos(live);$('pw-on').textContent=fmtKm(onM);$('pw-of').textContent='de '+fmtKm(TOTAL);
+  $('pw-bar').style.width=(onM/TOTAL*100).toFixed(1)+'%';
+  $('pw-circ').replaceChildren(...EN.map(e=>{const d=document.createElement('div');const m=metrosVivos(ALL.filter(k=>L[k].circuit===e.id&&live.has(k)));
+    d.textContent=`${e.id==='E2'?'Perímetro':'Interior'}: ${fmtKm(m)} de ${fmtKm(CIRC[e.id]||0)}`;return d;}));
+  $('pw-msg').textContent=state.open.size?`Switches abiertos: ${[...state.open].sort((a,b)=>a.slice(1)-b.slice(1)).join(', ')}. Sin corriente: ${fmtM(TOTAL-onM)} de cerca.`:(TOTAL-onM>5?`Todos los switches cerrados. Sin corriente: ${fmtM(TOTAL-onM)} de cerca desconectada.`:'Todos los switches cerrados: toda la cerca tiene corriente.');
+  $('reset').disabled=!state.open.size;
+  SWITCHES.forEach(sw=>{const row=document.querySelector(`[data-sw="${sw.id}"]`),open=state.open.has(sw.id);
+    row.classList.toggle('open',open);const b=row.querySelector('.toggle');b.setAttribute('aria-pressed',open?'true':'false');b.querySelector('.st').textContent=open?'Abierto':'Cerrado';});
+  if(alPintar)alPintar(live,onM);}
+let alPintar=null;
+function recompute(){state.live=solve(state.open);render();}
+function toggle(id){state.open.has(id)?state.open.delete(id):state.open.add(id);recompute();}
+function preview(id){gCut.replaceChildren();document.querySelectorAll('.sw-row').forEach(r=>r.classList.toggle('hl',r.dataset.sw===id));
+  if(!id||state.open.has(id))return;const sw=SWITCHES.find(s=>s.id===id);
+  sw.cut.forEach(k=>el('polyline',Object.assign({points:ptsStr(fullPts(L[k])),class:'cut'},NSS),gCut));}
+function flashRow(id){const r=document.querySelector(`[data-sw="${id}"]`);if(!r)return;r.classList.add('hl');setTimeout(()=>r.classList.remove('hl'),900);}
+
+const list=$('sw-list');
+SWITCHES.forEach(sw=>{const li=document.createElement('li');li.className='sw-row';li.dataset.sw=sw.id;const n=sw.cut.length;
+  li.innerHTML=`<span class="tag">${sw.id}</span><div style="min-width:0"><div class="sw-name"></div><div class="sw-cut">Corta ${n} ${n===1?'tramo':'tramos'} · ${fmtM(sw.cutM)}${sw.circuit==='E2'?' · perímetro':''}</div></div>
+  <button type="button" class="toggle" id="tg-${sw.id}" aria-pressed="false" aria-label="Abrir o cerrar ${sw.id}"><span class="st">Cerrado</span><span class="trk"></span></button>`;
+  li.querySelector('.sw-name').textContent=sw.name;
+  li.addEventListener('pointerenter',()=>preview(sw.id));li.addEventListener('pointerleave',()=>preview(null));
+  const b=li.querySelector('.toggle');b.addEventListener('click',()=>{toggle(sw.id);preview(null);});
+  b.addEventListener('focus',()=>preview(sw.id));b.addEventListener('blur',()=>preview(null));
+  list.appendChild(li);});
+$('reset').addEventListener('click',()=>{state.open.clear();recompute();});
+$('st-int').textContent=fmtKm(CIRC.E1||0);$('st-per').textContent=fmtKm(CIRC.E2||0);$('st-sw').textContent=SWITCHES.length;
+$('st-br').textContent=CABLES.length;$('st-gt').textContent=seenG.size;
+
+/* ---------- zoom y arrastre ---------- */
+const W=976,H=1170;let SYM_K=1;
+const view={s:1,tx:0,ty:0};
+function clampView(){view.s=Math.min(10,Math.max(1,view.s));view.tx=Math.min(0,Math.max(W*(1-view.s),view.tx));view.ty=Math.min(0,Math.max(H*(1-view.s),view.ty));}
+function unitPx(){const r=svg.getBoundingClientRect();return Math.min(r.width/W,r.height/H)*view.s;}
+function applyView(){clampView();vp.setAttribute('transform',`translate(${view.tx.toFixed(2)} ${view.ty.toFixed(2)}) scale(${view.s.toFixed(4)})`);
+  const u=unitPx()||1,k=1/u;SYM_K=k;SYMS.forEach(o=>o.g.setAttribute('transform',`translate(${o.x} ${o.y}) scale(${k.toFixed(4)})`));
+  if(typeof scalePins==='function')scalePins();ESCALAS.forEach(f=>f(k));
+  svg.classList.toggle('zoomed',view.s>1.01);
+  const mPerPx=MPP/u,target=mPerPx*110,nice=[10,20,25,50,100,200,250,500,1000].reduce((b,v)=>Math.abs(v-target)<Math.abs(b-target)?v:b,200);
+  $('sb-bar').style.width=(nice/mPerPx).toFixed(0)+'px';$('sb-txt').textContent=nice>=1000?(nice/1000)+' km':nice+' m';}
+function toSvg(cx,cy){const pt=svg.createSVGPoint();pt.x=cx;pt.y=cy;return pt.matrixTransform(svg.getScreenCTM().inverse());}
+function zoomAt(p,f){const s0=view.s;view.s=Math.min(10,Math.max(1,s0*f));const r=view.s/s0;view.tx=p.x-(p.x-view.tx)*r;view.ty=p.y-(p.y-view.ty)*r;applyView();}
+function focusAt(x,y,minS){view.s=Math.max(view.s,minS||3);view.tx=W/2-x*view.s;view.ty=H/2-y*view.s;applyView();
+  if(window.matchMedia('(max-width:900px)').matches)wrap.scrollIntoView({behavior:'smooth',block:'start'});}
+svg.addEventListener('wheel',e=>{e.preventDefault();zoomAt(toSvg(e.clientX,e.clientY),Math.exp(-e.deltaY*0.0016));},{passive:false});
+const ptrs=new Map();
+svg.addEventListener('pointerdown',e=>{ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});drag.moved=false;
+  if(ptrs.size===1){drag.active=true;drag.start={x:e.clientX,y:e.clientY};drag.last=toSvg(e.clientX,e.clientY);}
+  if(ptrs.size===2){const [a,b]=[...ptrs.values()];drag.pinch={d:Math.hypot(a.x-b.x,a.y-b.y)};}});
+svg.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;ptrs.set(e.pointerId,{x:e.clientX,y:e.clientY});
+  if(ptrs.size===2&&drag.pinch){const [a,b]=[...ptrs.values()],d=Math.hypot(a.x-b.x,a.y-b.y);if(d>0){zoomAt(toSvg((a.x+b.x)/2,(a.y+b.y)/2),d/drag.pinch.d);drag.pinch.d=d;drag.moved=true;}return;}
+  if(drag.active&&view.s>1.01){if(Math.hypot(e.clientX-drag.start.x,e.clientY-drag.start.y)>4){drag.moved=true;svg.classList.add('dragging');if(!svg.hasPointerCapture(e.pointerId))svg.setPointerCapture(e.pointerId);}
+    if(drag.moved){const p=toSvg(e.clientX,e.clientY);view.tx+=p.x-drag.last.x;view.ty+=p.y-drag.last.y;applyView();drag.last=toSvg(e.clientX,e.clientY);}}});
+const endPtr=e=>{ptrs.delete(e.pointerId);if(ptrs.size<2)drag.pinch=null;if(!ptrs.size){drag.active=false;svg.classList.remove('dragging');setTimeout(()=>drag.moved=false,0);}};
+svg.addEventListener('pointerup',endPtr);svg.addEventListener('pointercancel',endPtr);
+svg.addEventListener('click',()=>{if(!drag.moved)hideTip();});
+$('zin').addEventListener('click',()=>zoomAt({x:W/2,y:H/2},1.5));
+$('zout').addEventListener('click',()=>zoomAt({x:W/2,y:H/2},1/1.5));
+$('zfit').addEventListener('click',()=>{view.s=1;view.tx=0;view.ty=0;applyView();});
+new ResizeObserver(applyView).observe(svg);
+let hinted=false,markMode=false;
+svg.addEventListener('pointerdown',()=>{if(!hinted){hinted=true;setTimeout(()=>{if(!markMode)$('hint').hidden=true;},2500);}});
+
+
+/* ---------- correcciones (base de datos del mapa; si no hay, se guardan en este dispositivo) ---------- */
+const TIPOS=['Línea que sobra','Falta una línea','Línea en otro lugar','Conexión incorrecta','Switch','Cable sobre puerta','Puerta','Sentido del flujo','Energizador','Otro'];
+const gPins=$('g-pins'),PINS=[];
+const markBtn=$('mark'),markBtn2=$('mark2'),form=$('fix-form'),fTipo=$('fix-tipo'),fNota=$('fix-nota'),fNear=$('fix-near'),fMsg=$('fix-msg'),
+  fSave=$('fix-save'),fTitle=$('fix-title'),fixList=$('fix-list'),fixStatus=$('fix-status');
+fTipo.innerHTML=TIPOS.map(t=>`<option>${t}</option>`).join('');
+let DB=null,LOCAL=false,notes=[],draft=null,editing=null,readOnly=false,confirmDel=null,statusHold=0;
+function segDist(x,y,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],q=dx*dx+dy*dy||1;let t=((x-a[0])*dx+(y-a[1])*dy)/q;t=Math.max(0,Math.min(1,t));return Math.hypot(a[0]+t*dx-x,a[1]+t*dy-y);}
+function nearest(x,y){let best=null;const R=14/Math.max(1,view.s*.8);
+  SWITCHES.forEach(sw=>{const d=Math.hypot(sw.pos[0]-x,sw.pos[1]-y);if(d<R*1.2&&(!best||d<best.d))best={d,ref:sw.id,label:'Switch '+sw.id+' ('+sw.name+')'};});
+  if(best)return best;
+  EN.forEach(e=>{const d=Math.hypot(e.pos[0]-x,e.pos[1]-y);if(d<R*1.2&&(!best||d<best.d))best={d,ref:e.id,label:e.name};});if(best)return best;
+  NET.gates.forEach(([gx,gy],i)=>{const d=Math.hypot(gx-x,gy-y);if(d<R*.8&&(!best||d<best.d))best={d,ref:'G'+(i+1),label:'Puerta'};});if(best)return best;
+  ALL.forEach(k=>{const p=L[k].pts;for(let i=0;i<p.length-1;i++){const d=segDist(x,y,p[i],p[i+1]);if(d<R&&(!best||d<best.d))best={d,ref:k,label:'Línea: '+L[k].name};}});
+  return best;}
+const nextN=()=>notes.reduce((m,n)=>Math.max(m,+n.n||0),0)+1;
+function pinGlyph(n,kind){const g=el('g',{class:'pin'},gPins);
+  const fill=kind==='draft'?'#fff':kind==='resuelto'?'#6B746E':'#E0338A';
+  el('path',{d:'M0 0C-3-6-10-9-10-17a10 10 0 1 1 20 0c0 8-7 11-10 17z',fill,stroke:kind==='draft'?'#E0338A':'#fff','stroke-width':2},g);
+  el('text',{y:-13,'text-anchor':'middle',class:'pin-n',fill:kind==='draft'?'#B01F68':'#fff'},g).textContent=n;return g;}
+function scalePins(){PINS.forEach(o=>o.g.setAttribute('transform',`translate(${o.x} ${o.y}) scale(${SYM_K.toFixed(4)})`));}
+function drawPins(){gPins.replaceChildren();PINS.length=0;
+  notes.forEach(nd=>{if(editing&&editing.id===nd.id)return;const g=pinGlyph(nd.n,nd.estado);const ti=document.createElementNS(NS,'title');ti.textContent=nd.n+'. '+nd.tipo+(nd.nota?': '+nd.nota:'');g.prepend(ti);
+    PINS.push({g,x:nd.x,y:nd.y});g.addEventListener('click',e=>{e.stopPropagation();if(drag.moved)return;focusNote(nd.id,false);});});
+  if(draft){const g=pinGlyph(editing?editing.n:nextN(),'draft');PINS.push({g,x:draft.x,y:draft.y});}
+  scalePins();}
+function setMark(on){markMode=on&&!!DB&&!readOnly;svg.classList.toggle('marking',markMode);
+  [markBtn,markBtn2].forEach(b=>b.setAttribute('aria-pressed',markMode?'true':'false'));
+  $('mark-txt').textContent=markMode?'Terminar':'Marcar corrección';markBtn2.textContent=markMode?'Terminar de marcar':'Marcar corrección';
+  const h=$('hint');if(markMode){h.textContent='Toca el lugar del mapa donde hay un error.';h.hidden=false;}else{h.hidden=true;closeForm();}}
+function openForm(x,y){const same=editing&&x===editing.x&&y===editing.y&&editing.cerca;draft={x,y,near:same?{label:editing.cerca,ref:editing.ref}:nearest(x,y)};
+  fNear.textContent=draft.near?'Cerca de: '+draft.near.label:'Sin cerca, switch ni puerta justo aquí';
+  if(form.hidden){fMsg.textContent='';if(!editing){fTipo.value=TIPOS[0];fNota.value='';}}
+  fTitle.textContent=editing?'Editar corrección '+editing.n:'Corrección '+nextN();
+  form.hidden=false;$('hint').hidden=true;drawPins();setTimeout(()=>fNota.focus({preventScroll:true}),30);}
+function closeForm(){form.hidden=true;draft=null;editing=null;fSave.disabled=false;drawPins();if(markMode){$('hint').textContent='Toca el lugar del mapa donde hay un error.';$('hint').hidden=false;}}
+$('fix-cancel').addEventListener('click',closeForm);
+function flashStatus(msg){fixStatus.textContent=msg;statusHold=Date.now()+2500;setTimeout(()=>{if(Date.now()>=statusHold)statusIdle();},2600);}
+form.addEventListener('submit',async e=>{e.preventDefault();if(!DB||!draft)return;
+  const nota=fNota.value.trim();if(!nota){fMsg.textContent='Escribe qué está mal.';fNota.focus();return;}
+  const body={n:editing?editing.n:nextN(),x:+draft.x.toFixed(1),y:+draft.y.toFixed(1),tipo:fTipo.value,nota,
+    cerca:draft.near?draft.near.label:'',ref:draft.near?draft.near.ref:'',estado:editing?(editing.estado||'pendiente'):'pendiente',
+    creado:editing?(editing.creado||new Date().toISOString()):new Date().toISOString()};
+  fSave.disabled=true;fMsg.textContent='Guardando…';
+  const slow=setTimeout(()=>{fMsg.textContent='Está tardando. Revisa tu conexión e inténtalo otra vez.';fSave.disabled=false;},8000);
+  try{if(editing)await DB.doc('correcciones/'+editing.id).set(body);else await DB.collection('correcciones').add(body);
+    clearTimeout(slow);closeForm();flashStatus(`Corrección ${body.n} guardada.`);}
+  catch(err){clearTimeout(slow);fSave.disabled=false;const c=err&&err.code;
+    if(c==='invalid_argument'){readOnly=true;fMsg.textContent='Tu cuenta solo puede ver este mapa, no guardar correcciones.';}
+    else if(c==='quota_exceeded')fMsg.textContent='Se llenó el espacio de correcciones. Borra algunas ya resueltas.';
+    else fMsg.textContent='No se pudo guardar. Revisa tu conexión e inténtalo otra vez.';}});
+svg.addEventListener('click',e=>{if(!markMode)return;if(e.target.closest&&e.target.closest('.pin'))return;e.stopPropagation();e.preventDefault();if(drag.moved)return;
+  const p=toSvg(e.clientX,e.clientY);openForm((p.x-view.tx)/view.s,(p.y-view.ty)/view.s);},true);
+[markBtn,markBtn2].forEach(b=>b.addEventListener('click',()=>setMark(!markMode)));
+function focusNote(id,zoom=true){const nd=notes.find(n=>n.id===id);if(!nd)return;if(zoom)focusAt(nd.x,nd.y,3);
+  document.querySelectorAll('.fix-row').forEach(r=>r.classList.toggle('hl',r.dataset.id===id));
+  const r=document.querySelector(`.fix-row[data-id="${id}"]`);if(r&&!zoom)r.scrollIntoView({block:'nearest',behavior:'smooth'});}
+function renderNotes(){fixList.replaceChildren();
+  notes.forEach(nd=>{const li=document.createElement('li');li.className='fix-row'+(nd.estado==='resuelto'?' done':'');li.dataset.id=nd.id;
+    const tag=document.createElement('button');tag.type='button';tag.className='pin-tag';tag.textContent=nd.n;tag.setAttribute('aria-label','Ver corrección '+nd.n+' en el mapa');
+    tag.addEventListener('click',()=>focusNote(nd.id));
+    const tx=document.createElement('div');tx.className='fix-txt';
+    const b=document.createElement('b');b.textContent=(nd.tipo||'Corrección')+(nd.estado==='resuelto'?' · resuelta':'');tx.appendChild(b);
+    if(nd.cerca){const s=document.createElement('div');s.className='near';s.textContent=nd.cerca;tx.appendChild(s);}
+    const p=document.createElement('p');p.textContent=nd.nota||'';tx.appendChild(p);
+    const acts=document.createElement('div');acts.className='fix-row-acts';
+    if(DB&&!readOnly){
+      if(confirmDel===nd.id){const q=document.createElement('span');q.textContent='¿Borrar la '+nd.n+'?';
+        const y=document.createElement('button');y.type='button';y.className='danger';y.textContent='Sí, borrar';
+        y.addEventListener('click',async()=>{try{await DB.doc('correcciones/'+nd.id).delete();confirmDel=null;flashStatus(`Corrección ${nd.n} borrada.`);}catch(err){flashStatus('No se pudo borrar. Inténtalo otra vez.');}});
+        const no=document.createElement('button');no.type='button';no.textContent='No';no.addEventListener('click',()=>{confirmDel=null;renderNotes();});acts.append(q,y,no);}
+      else{const ed=document.createElement('button');ed.type='button';ed.textContent='Editar';
+        ed.addEventListener('click',()=>{if(!markMode)setMark(true);form.hidden=true;editing=nd;fTipo.value=TIPOS.includes(nd.tipo)?nd.tipo:'Otro';fNota.value=nd.nota||'';focusNote(nd.id);openForm(nd.x,nd.y);});
+        const del=document.createElement('button');del.type='button';del.className='danger';del.textContent='Borrar';del.addEventListener('click',()=>{confirmDel=nd.id;renderNotes();});
+        acts.append(ed,del);}}
+    li.append(tag,tx,acts);fixList.appendChild(li);});
+  drawPins();}
+function statusIdle(){if(Date.now()<statusHold)return;const pend=notes.filter(n=>n.estado!=='resuelto').length;
+  const where=LOCAL?' Guardadas solo en este dispositivo: inicia sesión para guardarlas en la nube.':'';
+  fixStatus.textContent=notes.length?`${notes.length} ${notes.length===1?'corrección':'correcciones'}${pend!==notes.length?` · ${pend} pendientes`:''}.${where}`:'Aún no hay correcciones. Toca «Marcar corrección» y luego el lugar del mapa.';}
+/* respaldo local con la misma forma que la base de datos */
+function localStore(){const KEY='cerco-correcciones-v1';let docs={},subs=[],seq=0;
+  try{docs=JSON.parse(localStorage.getItem(KEY)||'{}')||{};}catch(e){docs={};}
+  const save=()=>{try{localStorage.setItem(KEY,JSON.stringify(docs));}catch(e){}};
+  const snap=()=>({metadata:{fromCache:false},docs:Object.keys(docs).map(id=>({id,data:()=>docs[id]}))});
+  const fire=()=>subs.forEach(f=>f(snap()));
+  return {collection:()=>({onSnapshot(n){subs.push(n);setTimeout(()=>n(snap()),0);return()=>{};},
+      add:async b=>{const id='l'+Date.now().toString(36)+(seq++);docs[id]=b;save();fire();return {id};}}),
+    doc:p=>{const id=p.split('/')[1];return {set:async b=>{docs[id]=b;save();fire();},delete:async()=>{delete docs[id];save();fire();}};}};}
+function startNotes(db){if(!db){db=localStore();LOCAL=true;}DB=db;
+  [markBtn,markBtn2].forEach(b=>b.disabled=false);
+  const timer=setTimeout(()=>{fixStatus.textContent='Todavía no se pueden cargar las correcciones guardadas; puede que no estén al día.';},10000);
+  db.collection('correcciones').onSnapshot(snap=>{if(!snap.metadata.fromCache)clearTimeout(timer);
+      notes=snap.docs.map(d=>Object.assign({id:d.id},d.data())).sort((a,b)=>(a.n||0)-(b.n||0));
+      if(editing&&!notes.find(n=>n.id===editing.id))closeForm();
+      renderNotes();statusIdle();},
+    err=>{clearTimeout(timer);fixStatus.textContent='No se pudieron cargar las correcciones. Vuelve a abrir el mapa más tarde.';});}
+if(MODO==='mapa')(async()=>{let db=null;
+  try{const use=window.claude&&window.claude.use?window.claude.use('db'):null;
+    db=use?await Promise.race([use,new Promise(r=>setTimeout(()=>r(null),4000))]):null;}catch(e){db=null;}
+  startNotes(db);})();
+
+/* ---------- fallas (sección Fallas y pines en el mapa) ---------- */
+if(MODO==='fallas'){document.title='Fallas del Cerco';document.querySelector('.eyebrow').textContent='Reporte y reparación';
+  document.querySelector('h1').textContent='Fallas del cerco';document.querySelector('.stats').hidden=true;
+  $('mark').hidden=true;document.querySelector('.fixcard').hidden=true;$('hint').hidden=true;document.body.classList.add('f-modo');}
+function medir(ef){const prev=EFECTOS;EFECTOS=ef;const m=metrosVivos(solve(state.open,ef));EFECTOS=prev;return m;}
+if(window.FALLAS_MAPA)FALLAS_MAPA({MODO,L,ALL,EN,NET,el,NS,NSS,ptsStr,fmtM,fmtKm,along,fullPts,toSvg,view,svg,$,drag,focusAt,CIRC_NAME,medir,vivas:ef=>solve(state.open,ef),
+  ponerEfectos:ef=>{EFECTOS=ef;recompute();},alPintar:f=>{alPintar=f;render();},alEscalar:f=>ESCALAS.push(f),
+  reescalar:()=>ESCALAS.forEach(f=>f(SYM_K)),symK:()=>SYM_K});
+applyView();render();
+/* por detrás: si hay una versión más nueva del cerco se ofrece actualizar; si no hay respuesta, se avisa y se puede reintentar */
+const buscar=async(desdeVentana)=>{const lento=desdeVentana?0:setTimeout(()=>Cerco.aviso('Buscando cambios…',{cargando:true}),600);
+  const r=await Cerco.buscarCambios(RED_USADA);clearTimeout(lento);Cerco.aviso(null);
+  if(r.nueva)Cerco.aviso('El cerco cambió en el editor.',{boton:'Actualizar mapa',accion:()=>location.reload()});
+  else if(r.error&&!desdeVentana)Cerco.sinRespuesta('No se pudo revisar si hay cambios en el cerco. Mientras tanto se muestra la última versión guardada.',{reintentar:()=>buscar(true)});
+  return !r.error;};
+buscar();
+})();
+</script>
+
+<script>
+if ('serviceWorker' in navigator) {
+  const habia = !!navigator.serviceWorker.controller;   // si ya había una versión, avisar cuando llegue la nueva
+  navigator.serviceWorker.addEventListener('controllerchange', () => {
+    if (habia && window.Cerco) Cerco.aviso('Hay una versión nueva de la app.', {boton: 'Actualizar', accion: () => location.reload(), arriba: location.pathname.startsWith('/editor')});
+  });
+  addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(e => console.warn('SW', e)));
+}
+</script>
+</body>
+</html>

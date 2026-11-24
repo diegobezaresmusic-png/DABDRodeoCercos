@@ -13,7 +13,8 @@ NOMBRE = 'Cerco del Rancho'
 COLOR = '#15201A'
 
 APPS = {
-    'mapa':   {'titulo': 'Mapa del Cerco',   'scripts': ['/red-mapa.js']},
+    'mapa':   {'titulo': 'Mapa del Cerco',   'scripts': ['/red-mapa.js', '/fallas.js', '/fallas-mapa.js']},
+    'fallas': {'titulo': 'Fallas del Cerco', 'scripts': ['/red-mapa.js', '/fallas.js', '/fallas-mapa.js']},
     'editor': {'titulo': 'Editor del Cerco', 'scripts': []},
 }
 
@@ -84,6 +85,8 @@ a.op strong{{display:block;font-size:19px}}
 a.op.pri{{background:var(--accent);color:var(--accent-fg);border-color:transparent}}
 a.op.pri span{{color:inherit;opacity:.8}}
 a.op span{{color:var(--muted);font-size:14px}}
+a.op strong{{display:flex;align-items:center;gap:8px}}
+.badge{{font:700 13px/1 system-ui,sans-serif;padding:5px 9px;border-radius:99px;background:#D3261E;color:#fff}}
 a.op:focus-visible{{outline:3px solid var(--accent);outline-offset:3px}}
 #instalar{{font-size:14px}}
 .cuenta{{border-top:1px solid var(--rule);padding-top:14px;display:grid;gap:10px}}
@@ -97,12 +100,14 @@ a.op:focus-visible{{outline:3px solid var(--accent);outline-offset:3px}}
 </style>
 <script src="/config.js"></script>
 <script src="/nube.js"></script>
+<script src="/fallas.js"></script>
 </head>
 <body>
 <main>
   <h1><img src="/iconos/icono-192.png" alt="">{NOMBRE}</h1>
   <p>Elige qué quieres abrir.</p>
   <a class="op pri" href="/mapa/"><strong>Ver el mapa</strong><span>Circuitos, switches y correcciones.</span></a>
+  <a class="op" href="/fallas/"><strong>Fallas <b class="badge" id="n-fallas" hidden></b></strong><span>Reportar, ver qué se queda sin corriente y marcar reparadas.</span></a>
   <a class="op" href="/editor/"><strong>Editar el cerco</strong><span>Mover tramos, puertas y energizadores.</span></a>
   <p id="instalar"></p>
   <section class="cuenta" id="cuenta" hidden>
@@ -125,6 +130,10 @@ if (!ya) t.textContent = ios
   ? 'Para instalarla: en Safari toca Compartir y luego "Agregar a pantalla de inicio".'
   : 'Para instalarla: en Chrome abre el menú ⋮ y toca "Instalar app".';
 if ('serviceWorker' in navigator) addEventListener('load', () => navigator.serviceWorker.register('/sw.js').catch(() => {{}}));
+if (window.Fallas) Fallas.alCambiar(s => {{
+  const n = s.fallas.filter(f => f.estado !== 'reparada').length, b = document.getElementById('n-fallas');
+  b.hidden = !n; b.textContent = n + (n === 1 ? ' pendiente' : ' pendientes');
+}});
 (async () => {{
   const N = window.CercoNube; if (!N || !N.configurada) return;
   const $ = id => document.getElementById(id);
@@ -175,6 +184,12 @@ HEADERS = '''/*
   Cache-Control: no-cache
 
 /red-mapa.js
+  Cache-Control: no-cache
+
+/fallas.js
+  Cache-Control: no-cache
+
+/fallas-mapa.js
   Cache-Control: no-cache
 
 /datos/cerco.json
@@ -348,10 +363,11 @@ def main():
     (SALIDA / 'datos').mkdir()
     (SALIDA / 'datos' / 'cerco.json').write_text(json.dumps(cerco, ensure_ascii=False, separators=(',', ':')), encoding='utf-8')
     shutil.copy2(RAIZ / 'fuente' / 'rancho.jpg', SALIDA / 'datos' / 'rancho.jpg')
-    for js in ('cerco.js', 'nube.js'):
+    for js in ('cerco.js', 'nube.js', 'fallas.js'):
         shutil.copy2(RAIZ / 'herramientas' / 'web' / js, SALIDA / js)
-    shutil.copy2(RAIZ / 'fuente' / 'red-mapa.js', SALIDA / 'red-mapa.js')
-    archivos += ['/datos/cerco.json', '/datos/rancho.jpg', '/cerco.js', '/red-mapa.js']
+    for js in ('red-mapa.js', 'fallas-mapa.js'):
+        shutil.copy2(RAIZ / 'fuente' / js, SALIDA / js)
+    archivos += ['/datos/cerco.json', '/datos/rancho.jpg', '/cerco.js', '/red-mapa.js', '/fallas.js', '/fallas-mapa.js']
 
     for app, html in paginas().items():
         cfg = APPS[app]
@@ -384,6 +400,7 @@ def main():
         ],
         'shortcuts': [
             {'name': 'Ver el mapa', 'url': '/mapa/'},
+            {'name': 'Fallas', 'url': '/fallas/'},
             {'name': 'Editar el cerco', 'url': '/editor/'},
         ],
     }
