@@ -1,7 +1,7 @@
 // Service worker: la app abre al instante y funciona sin señal en el campo.
 // Todo sale primero de lo guardado en el teléfono. Las páginas y el cerco se actualizan por detrás para la próxima vez;
 // la búsqueda de cambios del cerco (?fresco) va directo a internet. Una versión nueva de la app se instala sola y avisa.
-const VERSION = 'add7362f7e14';
+const VERSION = 'd95d914840f6';
 const CACHE = 'cerco-' + VERSION;
 const PRECARGA = ["/", "/manifest.webmanifest", "/datos/cerco.json", "/datos/rancho.jpg", "/cerco.js", "/red-mapa.js", "/fallas.js", "/fallas-mapa.js", "/mapa/", "/fallas/", "/editor/", "/config.js", "/nube.js", "/iconos/apple-touch-icon.png", "/iconos/icono-192.png", "/iconos/icono-512.png", "/iconos/icono-maskable-192.png", "/iconos/icono-maskable-512.png", "/iconos/logo.png"];
 

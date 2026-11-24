@@ -85,7 +85,7 @@ h1{margin:0;font:700 clamp(28px,4vw,40px)/1 var(--f-display);letter-spacing:.01e
 .mapui button{width:36px;height:36px;border-radius:8px;border:1px solid rgba(255,255,255,.18);background:rgba(10,16,13,.78);color:#F2F4EF;
   font:600 18px/1 var(--f-body);cursor:pointer;display:grid;place-items:center;backdrop-filter:blur(4px)}
 .mapui button:hover{background:rgba(25,35,30,.92)}
-.mapui button:focus-visible,.sw-row button:focus-visible,.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
+.mapui button:focus-visible,.btn:focus-visible{outline:2px solid var(--amber);outline-offset:2px}
 .scalebar{position:absolute;left:10px;bottom:12px;color:#F2F4EF;font:500 11px var(--f-data);display:grid;gap:3px;
   padding:6px 8px;border-radius:6px;background:rgba(10,16,13,.62)}
 .scalebar i{display:block;height:6px;border:1.5px solid #F2F4EF;border-top:0}
@@ -112,20 +112,6 @@ h1{margin:0;font:700 clamp(28px,4vw,40px)/1 var(--f-display);letter-spacing:.01e
 .power p{margin:0;color:var(--muted);font-size:13px}
 .btn{justify-self:start;border:1px solid var(--rule);background:var(--chip);color:var(--fg);border-radius:7px;padding:6px 11px;font:600 13px var(--f-body);cursor:pointer}
 .btn:disabled{opacity:.5;cursor:default}
-.sw-list{list-style:none;margin:0;padding:0;display:grid}
-.sw-row{display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:10px;padding:8px 2px;border-top:1px solid var(--rule)}
-.sw-row:first-child{border-top:0}
-.sw-row.hl{background:color-mix(in srgb,var(--red) 8%,transparent)}
-.tag{font:600 13px/1 var(--f-data);min-width:34px;text-align:center;padding:5px 0;border-radius:6px;background:var(--red);color:#fff}
-.sw-row.open .tag{background:transparent;color:var(--red);box-shadow:inset 0 0 0 1.5px var(--red)}
-.sw-name{font-weight:600;font-size:14px;line-height:1.2}
-.sw-cut{color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums}
-.toggle{border:0;background:none;padding:0;cursor:pointer;display:flex;align-items:center;gap:7px;color:var(--muted);font:600 11px var(--f-display);letter-spacing:.1em;text-transform:uppercase}
-.toggle .trk{width:38px;height:22px;border-radius:99px;background:var(--ok);position:relative;transition:background .2s}
-.toggle .trk::after{content:"";position:absolute;top:3px;left:19px;width:16px;height:16px;border-radius:50%;background:#fff;transition:left .2s}
-.toggle[aria-pressed="true"] .trk{background:#8B938E}
-.toggle[aria-pressed="true"] .trk::after{left:3px}
-.toggle .st{min-width:54px;text-align:right}
 .legend{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;margin:0;padding:0;list-style:none}
 .legend li{display:flex;align-items:center;gap:8px;font-size:13px;min-width:0}
 .legend svg{flex:none;width:30px;height:18px;border-radius:4px;background:#1E2A24}
@@ -196,7 +182,7 @@ h1{margin:0;font:700 clamp(28px,4vw,40px)/1 var(--f-display);letter-spacing:.01e
   .panel{max-height:none;overflow:visible}
 }
 @media (max-width:420px){ .legend{grid-template-columns:1fr} .hint{font-size:12px} }
-@media (prefers-reduced-motion:reduce){ .flow,.pulse{animation:none} .bar i,.toggle .trk,.toggle .trk::after{transition:none} }
+@media (prefers-reduced-motion:reduce){ .flow,.pulse{animation:none} .bar i{transition:none} }
 </style>
 
 <div class="app">
@@ -268,12 +254,6 @@ h1{margin:0;font:700 clamp(28px,4vw,40px)/1 var(--f-display);letter-spacing:.01e
         <ul class="fix-list" id="fix-list"></ul>
         <div class="fix-btns"><button type="button" class="btn primary" id="mark2" aria-pressed="false" disabled>Marcar corrección</button></div>
         <p class="note">Toca «Marcar corrección», luego el lugar del mapa, y escribe qué está mal.</p>
-      </section>
-
-      <section class="card">
-        <h2>Switches</h2>
-        <ul class="sw-list" id="sw-list"></ul>
-        <p class="note">Al abrir un switch se corta todo lo que sigue después de él en el sentido del flujo.</p>
       </section>
 
       <section class="card">
@@ -406,7 +386,7 @@ SWITCHES.forEach(sw=>{const g=sym(sw.pos[0],sw.pos[1],'sym-sw');g.setAttribute('
   el('circle',{class:'ring',r:7.5,fill:'#D3261E',stroke:'#fff','stroke-width':1.5},g);
   el('path',{class:'lever',d:'M-4.2 0h8.4',stroke:'#fff','stroke-width':2.2,'stroke-linecap':'round'},g);
   el('text',{class:'lbl',x:10,y:-7},g).textContent=sw.id;
-  g.addEventListener('click',e=>{e.stopPropagation();if(drag.moved)return;toggle(sw.id);flashRow(sw.id);});
+  g.addEventListener('click',e=>{e.stopPropagation();if(drag.moved)return;toggle(sw.id);});
   g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle(sw.id);}});
   g.addEventListener('pointerenter',()=>preview(sw.id));g.addEventListener('pointerleave',()=>preview(null));
   SW_G[sw.id]=g;});
@@ -429,26 +409,15 @@ function render(){const live=state.live;gWire.replaceChildren();gFlow.replaceChi
     d.textContent=`${e.id==='E2'?'Perímetro':'Interior'}: ${fmtKm(m)} de ${fmtKm(CIRC[e.id]||0)}`;return d;}));
   $('pw-msg').textContent=state.open.size?`Switches abiertos: ${[...state.open].sort((a,b)=>a.slice(1)-b.slice(1)).join(', ')}. Sin corriente: ${fmtM(TOTAL-onM)} de cerca.`:(TOTAL-onM>5?`Todos los switches cerrados. Sin corriente: ${fmtM(TOTAL-onM)} de cerca desconectada.`:'Todos los switches cerrados: toda la cerca tiene corriente.');
   $('reset').disabled=!state.open.size;
-  SWITCHES.forEach(sw=>{const row=document.querySelector(`[data-sw="${sw.id}"]`),open=state.open.has(sw.id);
-    row.classList.toggle('open',open);const b=row.querySelector('.toggle');b.setAttribute('aria-pressed',open?'true':'false');b.querySelector('.st').textContent=open?'Abierto':'Cerrado';});
   if(alPintar)alPintar(live,onM);}
 let alPintar=null;
 function recompute(){state.live=solve(state.open);render();}
 function toggle(id){state.open.has(id)?state.open.delete(id):state.open.add(id);recompute();}
-function preview(id){gCut.replaceChildren();document.querySelectorAll('.sw-row').forEach(r=>r.classList.toggle('hl',r.dataset.sw===id));
+function preview(id){gCut.replaceChildren();
   if(!id||state.open.has(id))return;const sw=SWITCHES.find(s=>s.id===id);
   sw.cut.forEach(k=>el('polyline',Object.assign({points:ptsStr(fullPts(L[k])),class:'cut'},NSS),gCut));}
-function flashRow(id){const r=document.querySelector(`[data-sw="${id}"]`);if(!r)return;r.classList.add('hl');setTimeout(()=>r.classList.remove('hl'),900);}
 
-const list=$('sw-list');
-SWITCHES.forEach(sw=>{const li=document.createElement('li');li.className='sw-row';li.dataset.sw=sw.id;const n=sw.cut.length;
-  li.innerHTML=`<span class="tag">${sw.id}</span><div style="min-width:0"><div class="sw-name"></div><div class="sw-cut">Corta ${n} ${n===1?'tramo':'tramos'} · ${fmtM(sw.cutM)}${sw.circuit==='E2'?' · perímetro':''}</div></div>
-  <button type="button" class="toggle" id="tg-${sw.id}" aria-pressed="false" aria-label="Abrir o cerrar ${sw.id}"><span class="st">Cerrado</span><span class="trk"></span></button>`;
-  li.querySelector('.sw-name').textContent=sw.name;
-  li.addEventListener('pointerenter',()=>preview(sw.id));li.addEventListener('pointerleave',()=>preview(null));
-  const b=li.querySelector('.toggle');b.addEventListener('click',()=>{toggle(sw.id);preview(null);});
-  b.addEventListener('focus',()=>preview(sw.id));b.addEventListener('blur',()=>preview(null));
-  list.appendChild(li);});
+
 $('reset').addEventListener('click',()=>{state.open.clear();recompute();});
 $('st-int').textContent=fmtKm(CIRC.E1||0);$('st-per').textContent=fmtKm(CIRC.E2||0);$('st-sw').textContent=SWITCHES.length;
 $('st-br').textContent=CABLES.length;$('st-gt').textContent=seenG.size;
